@@ -13,6 +13,7 @@ import { TenantModule } from './tenant/tenant.module';
 import { AuthorizationModule } from './authorization/authorization.module';
 import { UrlModule } from './url/url.module';
 import { RedirectModule } from './redirect/redirect.module';
+import { AnalyticsModule } from './analytics/analytics.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 
 @Module({
@@ -41,6 +42,7 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
     TenantModule,
     UrlModule,
     RedirectModule,
+    AnalyticsModule,
   ],
   providers: [
     {

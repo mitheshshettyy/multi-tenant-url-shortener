@@ -1,16 +1,17 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { createHash, randomUUID, timingSafeEqual } from 'node:crypto';
 import { PasswordService } from './password.service';
 import { UsersService } from '../users/users.service';
+import { PrismaService } from '../database/prisma.service';
 import {
   InvalidCredentialsException,
   InvalidRefreshTokenException,
 } from './exceptions/auth.exception';
 import type { AuthTokens, JwtPayload } from './interfaces/jwt-payload.interface';
 import type { Configuration } from '../config/configuration';
-import type { User } from '@prisma/client';
+import { Role, type User } from '@prisma/client';
 import type { JwtSignOptions } from '@nestjs/jwt';
 
 // A fixed, valid-format bcrypt hash with no corresponding plaintext password.
@@ -24,6 +25,7 @@ export class AuthService {
     private readonly passwordService: PasswordService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService<Configuration>,
+    private readonly prisma: PrismaService,
   ) {}
 
   async login(email: string, password: string): Promise<AuthTokens> {
@@ -59,6 +61,52 @@ export class AuthService {
 
   async logout(userId: string): Promise<void> {
     await this.usersService.updateRefreshTokenHash(userId, null);
+  }
+
+  async register(dto: {
+    tenantName: string;
+    tenantSlug: string;
+    email: string;
+    password: string;
+  }): Promise<AuthTokens> {
+    // 1. Check if email is already in use
+    const existingUser = await this.usersService.findByEmail(dto.email);
+    if (existingUser) {
+      throw new ConflictException('Email already in use');
+    }
+
+    // 2. Check if tenant slug is already in use
+    const existingTenant = await this.prisma.tenant.findUnique({
+      where: { slug: dto.tenantSlug },
+    });
+    if (existingTenant) {
+      throw new ConflictException('Tenant slug already in use');
+    }
+
+    // 3. Hash the password
+    const passwordHash = await this.passwordService.hash(dto.password);
+
+    // 4. Create tenant and user in a transaction
+    const user = await this.prisma.$transaction(async (tx) => {
+      const tenant = await tx.tenant.create({
+        data: {
+          name: dto.tenantName,
+          slug: dto.tenantSlug,
+        },
+      });
+
+      return tx.user.create({
+        data: {
+          tenantId: tenant.id,
+          email: dto.email,
+          passwordHash,
+          role: Role.TENANT_ADMIN,
+        },
+      });
+    });
+
+    // 5. Issue tokens
+    return this.issueTokens(user);
   }
 
   private async issueTokens(user: User): Promise<AuthTokens> {
