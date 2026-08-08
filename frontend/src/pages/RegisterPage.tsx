@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
-import { Building2, UserPlus, AlertTriangle, ArrowRight, Link as LinkIcon, Mail, Lock } from 'lucide-react';
+import { Building2, Mail, Lock, Link as LinkIcon, AlertTriangle, ArrowRight } from 'lucide-react';
+import { Spinner } from '../components/ui/Spinner';
 
 export const RegisterPage: React.FC = () => {
   const { register } = useAuth();
   const navigate = useNavigate();
-  
+
   const [tenantName, setTenantName] = useState('');
   const [tenantSlug, setTenantSlug] = useState('');
   const [email, setEmail] = useState('');
@@ -15,7 +16,6 @@ export const RegisterPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSlugChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Only allow lowercase alphanumeric and hyphens
     const val = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '');
     setTenantSlug(val);
   };
@@ -35,140 +35,161 @@ export const RegisterPage: React.FC = () => {
   };
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
-      <div className="glass-panel animate-fade-in" style={{ width: '100%', maxWidth: '480px', padding: '40px' }}>
-        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-          <div style={{
-            display: 'inline-flex',
-            padding: '12px',
-            borderRadius: '12px',
-            background: 'rgba(168, 85, 247, 0.1)',
-            border: '1px solid rgba(168, 85, 247, 0.2)',
-            color: '#a855f7',
-            marginBottom: '16px'
-          }}>
-            <UserPlus size={28} />
+    <div className="auth-layout">
+      {/* ── Left panel ── */}
+      <div className="auth-layout__left" aria-hidden="true">
+        {/* Wordmark */}
+        <div
+          className="font-display"
+          style={{ fontSize: '1rem', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--fg)' }}
+        >
+          LINK<span style={{ color: 'var(--accent)' }}>SCOPE</span>
+        </div>
+
+        {/* Hero statement */}
+        <div>
+          <div
+            className="font-display"
+            style={{
+              fontSize: 'clamp(3.5rem, 7vw, 6rem)',
+              fontWeight: 900,
+              letterSpacing: '-0.05em',
+              lineHeight: 1,
+              color: 'var(--fg)',
+              marginBottom: '24px',
+            }}
+          >
+            Your team.<br />
+            <span style={{ color: 'var(--border)' }}>Your links.</span>
           </div>
-          <h2 style={{ fontSize: '24px', fontWeight: 700, fontFamily: 'Outfit', letterSpacing: '-0.02em', marginBottom: '8px' }}>
-            Register Organization
-          </h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>
-            Create an isolated tenant environment
+          <p style={{ fontSize: '0.9375rem', color: 'var(--muted-fg)', maxWidth: '320px', lineHeight: 1.7 }}>
+            Each workspace is fully isolated. Your links, analytics, and members stay completely separate from other tenants.
           </p>
         </div>
 
-        {error && (
-          <div style={{
-            display: 'flex',
-            gap: '8px',
-            background: 'rgba(248, 113, 113, 0.1)',
-            border: '1px solid rgba(248, 113, 113, 0.2)',
-            borderRadius: '8px',
-            padding: '12px',
-            color: 'var(--text-error)',
-            fontSize: '13px',
-            marginBottom: '24px'
-          }}>
-            <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: '2px' }} />
-            <span>{error}</span>
-          </div>
-        )}
+        {/* Bottom label */}
+        <div
+          className="font-mono"
+          style={{ fontSize: '0.65rem', letterSpacing: '0.15em', color: 'var(--border)', textTransform: 'uppercase' }}
+        >
+          Row-level isolation · Role-based access · Real-time analytics
+        </div>
+      </div>
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-          <div>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '6px', letterSpacing: '0.05em' }}>
-              Company / Org Name
-            </label>
-            <div style={{ position: 'relative' }}>
-              <Building2 size={16} style={{ position: 'absolute', left: '14px', top: '15px', color: 'var(--text-muted)' }} />
-              <input
-                type="text"
-                required
-                className="form-input"
-                style={{ paddingLeft: '42px' }}
-                placeholder="Acme Corp"
-                value={tenantName}
-                onChange={(e) => setTenantName(e.target.value)}
-              />
+      {/* ── Right panel: form ── */}
+      <div className="auth-layout__right">
+        <div className="auth-form animate-fade-in">
+          <h1 className="auth-form__title">Create workspace.</h1>
+          <p className="auth-form__sub">Register your organization as a new tenant.</p>
+
+          {/* Error banner */}
+          {error && (
+            <div className="error-banner" role="alert" style={{ marginBottom: '20px' }}>
+              <AlertTriangle size={16} strokeWidth={1.5} style={{ flexShrink: 0, marginTop: '2px', color: 'var(--accent)' }} />
+              <span>{error}</span>
             </div>
-          </div>
+          )}
 
-          <div>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '6px', letterSpacing: '0.05em' }}>
-              Tenant Short URL Slug
-            </label>
-            <div style={{ position: 'relative' }}>
-              <LinkIcon size={16} style={{ position: 'absolute', left: '14px', top: '15px', color: 'var(--text-muted)' }} />
-              <input
-                type="text"
-                required
-                className="form-input"
-                style={{ paddingLeft: '42px' }}
-                placeholder="acme-corp"
-                value={tenantSlug}
-                onChange={handleSlugChange}
-              />
+          <form onSubmit={handleSubmit} className="auth-form__fields" noValidate>
+            {/* Company name */}
+            <div>
+              <label className="form-label" htmlFor="reg-tenant-name">Company / Org Name</label>
+              <div className="form-input-icon-wrap">
+                <Building2 size={15} strokeWidth={1.5} className="form-input-icon" aria-hidden="true" />
+                <input
+                  id="reg-tenant-name"
+                  type="text"
+                  required
+                  className="form-input"
+                  placeholder="Acme Corp"
+                  autoComplete="organization"
+                  value={tenantName}
+                  onChange={(e) => setTenantName(e.target.value)}
+                />
+              </div>
             </div>
-            <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
-              This defines your workspace slug (e.g. alphanumeric/hyphens only).
-            </span>
-          </div>
 
-          <div>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '6px', letterSpacing: '0.05em' }}>
-              Administrator Email
-            </label>
-            <div style={{ position: 'relative' }}>
-              <Mail size={16} style={{ position: 'absolute', left: '14px', top: '15px', color: 'var(--text-muted)' }} />
-              <input
-                type="email"
-                required
-                className="form-input"
-                style={{ paddingLeft: '42px' }}
-                placeholder="admin@acme.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
+            {/* Tenant slug */}
+            <div>
+              <label className="form-label" htmlFor="reg-tenant-slug">Workspace Slug</label>
+              <div className="form-input-icon-wrap">
+                <LinkIcon size={15} strokeWidth={1.5} className="form-input-icon" aria-hidden="true" />
+                <input
+                  id="reg-tenant-slug"
+                  type="text"
+                  required
+                  className="form-input"
+                  placeholder="acme-corp"
+                  autoComplete="off"
+                  value={tenantSlug}
+                  onChange={handleSlugChange}
+                />
+              </div>
+              <p className="form-hint">Lowercase letters, numbers and hyphens only.</p>
             </div>
-          </div>
 
-          <div>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '6px', letterSpacing: '0.05em' }}>
-              Administrator Password
-            </label>
-            <div style={{ position: 'relative' }}>
-              <Lock size={16} style={{ position: 'absolute', left: '14px', top: '15px', color: 'var(--text-muted)' }} />
-              <input
-                type="password"
-                required
-                className="form-input"
-                style={{ paddingLeft: '42px' }}
-                placeholder="Min 8 characters"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
+            {/* Email */}
+            <div>
+              <label className="form-label" htmlFor="reg-email">Administrator Email</label>
+              <div className="form-input-icon-wrap">
+                <Mail size={15} strokeWidth={1.5} className="form-input-icon" aria-hidden="true" />
+                <input
+                  id="reg-email"
+                  type="email"
+                  required
+                  className="form-input"
+                  placeholder="admin@acme.com"
+                  autoComplete="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </div>
             </div>
+
+            {/* Password */}
+            <div>
+              <label className="form-label" htmlFor="reg-password">Administrator Password</label>
+              <div className="form-input-icon-wrap">
+                <Lock size={15} strokeWidth={1.5} className="form-input-icon" aria-hidden="true" />
+                <input
+                  id="reg-password"
+                  type="password"
+                  required
+                  minLength={8}
+                  className="form-input"
+                  placeholder="Min. 8 characters"
+                  autoComplete="new-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Submit */}
+            <button
+              id="btn-register-submit"
+              type="submit"
+              disabled={isSubmitting}
+              className="btn-secondary"
+              style={{ width: '100%', justifyContent: 'center', marginTop: '8px', height: '48px' }}
+            >
+              {isSubmitting ? (
+                <Spinner size={16} />
+              ) : (
+                <>
+                  Create Workspace <ArrowRight size={15} strokeWidth={1.5} />
+                </>
+              )}
+            </button>
+          </form>
+
+          {/* Footer link */}
+          <div className="auth-form__footer">
+            <span>Already have a workspace?</span>
+            <Link to="/login" className="btn-ghost" style={{ padding: '0' }}>
+              Sign in
+            </Link>
           </div>
-
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="btn-primary"
-            style={{ width: '100%', padding: '14px', marginTop: '8px' }}
-          >
-            {isSubmitting ? 'Registering...' : (
-              <>
-                Create Account <ArrowRight size={16} />
-              </>
-            )}
-          </button>
-        </form>
-
-        <div style={{ textAlign: 'center', marginTop: '24px', fontSize: '13px', color: 'var(--text-muted)' }}>
-          Already have a tenant registered?{' '}
-          <Link to="/login" style={{ color: 'var(--primary)', textDecoration: 'none', fontWeight: 600 }}>
-            Sign In
-          </Link>
         </div>
       </div>
     </div>

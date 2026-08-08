@@ -1,7 +1,8 @@
 import React from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate, NavLink, Outlet } from 'react-router-dom';
-import { Link2, BarChart3, LogOut, Shield, User as UserIcon } from 'lucide-react';
+import { useNavigate, NavLink, Outlet, Link } from 'react-router-dom';
+import { Link2, BarChart3, LogOut, Shield, ShieldCheck } from 'lucide-react';
+import { Badge } from '../components/ui/Badge';
 
 export const DashboardLayout: React.FC = () => {
   const { user, logout } = useAuth();
@@ -13,167 +14,95 @@ export const DashboardLayout: React.FC = () => {
   };
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg-color)' }}>
-      {/* Sidebar */}
-      <aside className="glass-panel" style={{
-        width: '260px',
-        borderRadius: '0 20px 20px 0',
-        borderLeft: 'none',
-        display: 'flex',
-        flexDirection: 'column',
-        padding: '24px 16px',
-        position: 'fixed',
-        top: 0,
-        bottom: 0,
-        left: 0,
-        zIndex: 10
-      }}>
-        {/* Brand Logo */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px', marginBottom: '32px' }}>
-          <div style={{
-            background: 'var(--primary)',
-            padding: '8px',
-            borderRadius: '8px',
-            boxShadow: '0 0 10px var(--primary-glow)',
-            color: '#fff',
-            display: 'flex'
-          }}>
-            <Link2 size={20} />
+    <div style={{ display: 'flex', minHeight: '100vh' }}>
+      {/* ── Sidebar ── */}
+      <aside className="sidebar">
+        {/* Brand */}
+        <div className="sidebar__brand">
+          <div className="sidebar__wordmark">
+            LINK<span>SCOPE</span>
           </div>
-          <span style={{ fontFamily: 'Outfit', fontSize: '18px', fontWeight: 700, letterSpacing: '-0.02em' }}>
-            LinkScope
-          </span>
+          <div className="sidebar__tagline">Multi-tenant URL platform</div>
         </div>
 
-        {/* Navigation Menu */}
-        <nav style={{ display: 'flex', flexDirection: 'column', gap: '8px', flexGrow: 1 }}>
+        {/* Navigation */}
+        <nav className="sidebar__nav" aria-label="Dashboard navigation">
           <NavLink
             to="/"
             end
-            style={({ isActive }) => ({
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              padding: '12px',
-              borderRadius: '8px',
-              color: isActive ? '#fff' : 'var(--text-muted)',
-              background: isActive ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
-              textDecoration: 'none',
-              fontWeight: 500,
-              fontSize: '14px',
-              transition: 'all 0.2s ease',
-              border: isActive ? '1px solid rgba(255,255,255,0.05)' : '1px solid transparent'
-            })}
+            id="nav-links"
+            className={({ isActive }) =>
+              `sidebar__nav-item${isActive ? ' sidebar__nav-item--active' : ''}`
+            }
           >
-            <Link2 size={18} />
-            <span>Short Links</span>
+            <Link2 size={16} strokeWidth={1.5} aria-hidden="true" />
+            Short Links
           </NavLink>
 
           <NavLink
             to="/analytics"
-            style={({ isActive }) => ({
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              padding: '12px',
-              borderRadius: '8px',
-              color: isActive ? '#fff' : 'var(--text-muted)',
-              background: isActive ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
-              textDecoration: 'none',
-              fontWeight: 500,
-              fontSize: '14px',
-              transition: 'all 0.2s ease',
-              border: isActive ? '1px solid rgba(255,255,255,0.05)' : '1px solid transparent'
-            })}
+            id="nav-analytics"
+            className={({ isActive }) =>
+              `sidebar__nav-item${isActive ? ' sidebar__nav-item--active' : ''}`
+            }
           >
-            <BarChart3 size={18} />
-            <span>Analytics</span>
+            <BarChart3 size={16} strokeWidth={1.5} aria-hidden="true" />
+            Analytics
           </NavLink>
+
+          {/* Platform admin link — visible only to SUPER_ADMIN */}
+          {user?.role === 'SUPER_ADMIN' && (
+            <Link
+              to="/admin"
+              id="nav-admin"
+              className="sidebar__nav-item"
+              style={{ color: 'var(--accent)', borderTop: '1px solid var(--border)', marginTop: '8px', paddingTop: '16px' }}
+            >
+              <ShieldCheck size={16} strokeWidth={1.5} aria-hidden="true" />
+              Platform Admin
+            </Link>
+          )}
         </nav>
 
-        {/* User Card & Logout */}
-        <div style={{ borderTop: '1px solid rgba(255, 255, 255, 0.08)', paddingTop: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '4px' }}>
-            <div style={{
-              background: 'rgba(255,255,255,0.05)',
-              padding: '8px',
-              borderRadius: '50%',
-              display: 'flex',
-              color: 'var(--text-muted)'
-            }}>
-              <UserIcon size={16} />
-            </div>
-            <div style={{ overflow: 'hidden' }}>
-              <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-main)', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
-                {user?.email}
-              </div>
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                {user?.role === 'TENANT_ADMIN' ? (
-                  <>
-                    <Shield size={10} style={{ color: 'var(--primary)' }} /> Admin
-                  </>
-                ) : 'Member'}
-              </div>
+        {/* User + Logout */}
+        <div className="sidebar__footer">
+          <div
+            style={{ marginBottom: '4px' }}
+            aria-label={`Logged in as ${user?.email}`}
+          >
+            <div className="sidebar__user-email">{user?.email}</div>
+            <div
+              className="sidebar__user-role"
+              style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+            >
+              {user?.role === 'TENANT_ADMIN' ? (
+                <>
+                  <Shield size={10} style={{ color: 'var(--accent)' }} aria-hidden="true" />
+                  <Badge variant="role">Admin</Badge>
+                </>
+              ) : (
+                <Badge variant="role">Member</Badge>
+              )}
             </div>
           </div>
 
           <button
+            id="btn-logout"
             onClick={handleLogout}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              width: '100%',
-              padding: '12px',
-              background: 'transparent',
-              border: 'none',
-              borderRadius: '8px',
-              color: 'var(--text-error)',
-              fontSize: '14px',
-              fontWeight: 500,
-              cursor: 'pointer',
-              transition: 'background 0.2s ease'
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(248, 113, 113, 0.08)')}
-            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+            className="btn-ghost"
+            style={{ marginTop: '12px', width: '100%', justifyContent: 'flex-start' }}
+            aria-label="Log out of LinkScope"
           >
-            <LogOut size={18} />
-            <span>Logout</span>
+            <LogOut size={14} strokeWidth={1.5} aria-hidden="true" />
+            Log out
           </button>
         </div>
       </aside>
 
-      {/* Main Content Area */}
-      <div style={{ flexGrow: 1, marginLeft: '260px', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-        <header style={{
-          height: '70px',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
-          padding: '0 40px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'flex-end',
-          background: 'rgba(11, 12, 21, 0.2)',
-          backdropFilter: 'blur(8px)'
-        }}>
-          <div style={{
-            fontSize: '12px',
-            background: 'rgba(99, 102, 241, 0.1)',
-            border: '1px solid rgba(99, 102, 241, 0.15)',
-            color: 'var(--primary)',
-            padding: '6px 12px',
-            borderRadius: '100px',
-            fontWeight: 600,
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em'
-          }}>
-            Tenant Environment Active
-          </div>
-        </header>
-
-        <main style={{ flexGrow: 1, padding: '40px', overflowY: 'auto' }}>
-          <Outlet />
-        </main>
-      </div>
+      {/* ── Main content ── */}
+      <main className="main-content" role="main">
+        <Outlet />
+      </main>
     </div>
   );
 };

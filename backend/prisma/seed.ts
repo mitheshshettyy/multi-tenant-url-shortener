@@ -3,13 +3,24 @@ import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
+const SALT_ROUNDS = 12;
+
+// ── Existing tenant seed (unchanged) ──────────────────────────────────────
 const SEED_TENANT_NAME = 'Acme Inc';
 const SEED_TENANT_SLUG = 'acme';
 const SEED_USER_EMAIL = 'dev@example.com';
 const SEED_USER_PASSWORD = 'devpassword123';
-const SALT_ROUNDS = 12;
+
+// ── Platform admin seed ────────────────────────────────────────────────────
+// The __platform__ tenant is a reserved tenant that anchors the SUPER_ADMIN.
+// It is never shown in the admin tenants list.
+const PLATFORM_TENANT_SLUG = '__platform__';
+const PLATFORM_TENANT_NAME = 'Platform Administration';
+const SUPER_ADMIN_EMAIL = 'superadmin@platform.com';
+const SUPER_ADMIN_PASSWORD = 'superadmin123';
 
 async function main(): Promise<void> {
+  // 1. Existing tenant + user (unchanged)
   const tenant = await prisma.tenant.upsert({
     where: { slug: SEED_TENANT_SLUG },
     update: {},
@@ -34,8 +45,38 @@ async function main(): Promise<void> {
     },
   });
 
-  console.log(`Seeded tenant: ${tenant.name} (${tenant.slug})`);
-  console.log(`Seeded user: ${user.email} (password: ${SEED_USER_PASSWORD}, role: ${user.role})`);
+  // 2. Platform tenant (reserved, never shown in tenants list)
+  const platformTenant = await prisma.tenant.upsert({
+    where: { slug: PLATFORM_TENANT_SLUG },
+    update: {},
+    create: {
+      name: PLATFORM_TENANT_NAME,
+      slug: PLATFORM_TENANT_SLUG,
+    },
+  });
+
+  const superAdminHash = await bcrypt.hash(SUPER_ADMIN_PASSWORD, SALT_ROUNDS);
+
+  const superAdmin = await prisma.user.upsert({
+    where: { email: SUPER_ADMIN_EMAIL },
+    update: {
+      role: Role.SUPER_ADMIN,
+    },
+    create: {
+      email: SUPER_ADMIN_EMAIL,
+      passwordHash: superAdminHash,
+      tenantId: platformTenant.id,
+      role: Role.SUPER_ADMIN,
+    },
+  });
+
+  console.log('\n── Tenant Seed ──────────────────────────────────────────');
+  console.log(`Tenant : ${tenant.name} (${tenant.slug})`);
+  console.log(`User   : ${user.email}  (password: ${SEED_USER_PASSWORD}, role: ${user.role})`);
+  console.log('\n── Platform Admin Seed ──────────────────────────────────');
+  console.log(`Tenant : ${platformTenant.name} (${platformTenant.slug})`);
+  console.log(`Admin  : ${superAdmin.email}  (password: ${SUPER_ADMIN_PASSWORD}, role: ${superAdmin.role})`);
+  console.log('─────────────────────────────────────────────────────────\n');
 }
 
 main()

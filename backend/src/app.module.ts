@@ -14,6 +14,7 @@ import { AuthorizationModule } from './authorization/authorization.module';
 import { UrlModule } from './url/url.module';
 import { RedirectModule } from './redirect/redirect.module';
 import { AnalyticsModule } from './analytics/analytics.module';
+import { AdminModule } from './admin/admin.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 
 @Module({
@@ -43,6 +44,7 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
     UrlModule,
     RedirectModule,
     AnalyticsModule,
+    AdminModule,
   ],
   providers: [
     {

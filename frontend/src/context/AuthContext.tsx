@@ -5,7 +5,7 @@ export interface User {
   sub: string;
   email: string;
   tenantId: string;
-  role: 'TENANT_ADMIN' | 'MEMBER';
+  role: 'SUPER_ADMIN' | 'TENANT_ADMIN' | 'MEMBER';
 }
 
 interface AuthContextType {

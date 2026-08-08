@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import api from '../utils/api';
 import {
   Plus,
@@ -11,8 +11,12 @@ import {
   Clipboard,
   Check,
   AlertTriangle,
-  X
 } from 'lucide-react';
+import { PageHeader } from '../components/ui/PageHeader';
+import { Badge } from '../components/ui/Badge';
+import { EmptyState } from '../components/ui/EmptyState';
+import { Spinner } from '../components/ui/Spinner';
+import { Modal } from '../components/ui/Modal';
 
 interface Url {
   id: string;
@@ -31,7 +35,7 @@ export const LinksPage: React.FC = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Modal State
+  // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [originalUrl, setOriginalUrl] = useState('');
   const [customCode, setCustomCode] = useState('');
@@ -40,18 +44,19 @@ export const LinksPage: React.FC = () => {
   const [modalError, setModalError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Copied indicator state
+  // Delete confirmation state
+  const [deleteTarget, setDeleteTarget] = useState<Url | null>(null);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Copy indicator
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
-  const fetchUrls = async () => {
+  const fetchUrls = useCallback(async () => {
     setIsLoading(true);
     try {
       const { data } = await api.get('/urls', {
-        params: {
-          page,
-          limit: 10,
-          search: search || undefined,
-        },
+        params: { page, limit: 10, search: search || undefined },
       });
       setUrls(data.data);
       setTotalPages(data.meta.totalPages);
@@ -60,11 +65,11 @@ export const LinksPage: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [page, search]);
 
   useEffect(() => {
     fetchUrls();
-  }, [page, search]);
+  }, [fetchUrls]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,7 +83,6 @@ export const LinksPage: React.FC = () => {
         expiresAt: expiresAt || undefined,
       });
       setIsModalOpen(false);
-      // Reset form
       setOriginalUrl('');
       setCustomCode('');
       setTitle('');
@@ -92,6 +96,15 @@ export const LinksPage: React.FC = () => {
     }
   };
 
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setModalError(null);
+    setOriginalUrl('');
+    setCustomCode('');
+    setTitle('');
+    setExpiresAt('');
+  };
+
   const handleToggleActive = async (id: string, currentStatus: boolean) => {
     try {
       await api.patch(`/urls/${id}`, { isActive: !currentStatus });
@@ -101,13 +114,23 @@ export const LinksPage: React.FC = () => {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this short link?')) return;
+  const openDeleteModal = (url: Url) => {
+    setDeleteTarget(url);
+    setIsDeleteOpen(true);
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
     try {
-      await api.delete(`/urls/${id}`);
+      await api.delete(`/urls/${deleteTarget.id}`);
+      setIsDeleteOpen(false);
+      setDeleteTarget(null);
       fetchUrls();
     } catch (err) {
       console.error('Failed to delete link', err);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -119,160 +142,207 @@ export const LinksPage: React.FC = () => {
   };
 
   const getStatusBadge = (url: Url) => {
-    const now = new Date();
-    const expired = url.expiresAt && new Date(url.expiresAt) <= now;
-
-    if (expired) {
-      return (
-        <span style={{ fontSize: '11px', padding: '4px 8px', borderRadius: '100px', background: 'rgba(248, 113, 113, 0.1)', color: 'var(--text-error)', border: '1px solid rgba(248, 113, 113, 0.15)', fontWeight: 600 }}>
-          Expired
-        </span>
-      );
-    }
-    if (!url.isActive) {
-      return (
-        <span style={{ fontSize: '11px', padding: '4px 8px', borderRadius: '100px', background: 'rgba(156, 163, 175, 0.1)', color: 'var(--text-muted)', border: '1px solid rgba(156, 163, 175, 0.15)', fontWeight: 600 }}>
-          Inactive
-        </span>
-      );
-    }
-    return (
-      <span style={{ fontSize: '11px', padding: '4px 8px', borderRadius: '100px', background: 'rgba(52, 211, 153, 0.1)', color: 'var(--text-success)', border: '1px solid rgba(52, 211, 153, 0.15)', fontWeight: 600 }}>
-        Active
-      </span>
-    );
+    const expired = url.expiresAt && new Date(url.expiresAt) <= new Date();
+    if (expired) return <Badge variant="expired">Expired</Badge>;
+    if (!url.isActive) return <Badge variant="inactive">Inactive</Badge>;
+    return <Badge variant="active">Active</Badge>;
   };
 
   return (
-    <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
-      {/* Header bar */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <h1 style={{ fontFamily: 'Outfit', fontSize: '28px', fontWeight: 700, letterSpacing: '-0.02em', marginBottom: '6px' }}>
-            Short Links
-          </h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>
-            Manage and distribute your tenant's short URLs
-          </p>
-        </div>
-        <button className="btn-primary" onClick={() => setIsModalOpen(true)}>
-          <Plus size={18} /> Create Short Link
-        </button>
-      </div>
+    <div className="animate-fade-in">
+      {/* ── Header ── */}
+      <PageHeader
+        eyebrow="Workspace"
+        title="Short Links"
+        subtitle="Create, manage, and distribute your tenant's URLs."
+        action={
+          <button
+            id="btn-create-link"
+            className="btn-primary"
+            onClick={() => setIsModalOpen(true)}
+            aria-label="Create new short link"
+          >
+            <Plus size={16} strokeWidth={1.5} aria-hidden="true" />
+            New Link
+          </button>
+        }
+      />
 
-      {/* Search Filter */}
-      <div className="glass-panel" style={{ display: 'flex', alignItems: 'center', padding: '6px 14px', gap: '10px' }}>
-        <Search size={18} style={{ color: 'var(--text-muted)' }} />
+      {/* ── Search ── */}
+      <div className="search-bar" style={{ marginBottom: '2px' }}>
+        <Search size={16} strokeWidth={1.5} style={{ color: 'var(--muted-fg)', flexShrink: 0 }} aria-hidden="true" />
         <input
-          type="text"
-          placeholder="Search by title, short code or original URL..."
-          style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '14px', width: '100%', outline: 'none', padding: '8px 0' }}
+          id="search-links"
+          type="search"
+          placeholder="Search by title, short code, or destination URL…"
           value={search}
           onChange={(e) => {
             setSearch(e.target.value);
             setPage(1);
           }}
+          aria-label="Search short links"
         />
       </div>
 
-      {/* Links List */}
-      <div className="glass-panel" style={{ overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '14px' }}>
-          <thead>
-            <tr style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.05)', background: 'rgba(255, 255, 255, 0.02)' }}>
-              <th style={{ padding: '16px 24px', fontWeight: 600, color: 'var(--text-muted)', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Short Link</th>
-              <th style={{ padding: '16px 24px', fontWeight: 600, color: 'var(--text-muted)', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Original Destination</th>
-              <th style={{ padding: '16px 24px', fontWeight: 600, color: 'var(--text-muted)', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Status</th>
-              <th style={{ padding: '16px 24px', fontWeight: 600, color: 'var(--text-muted)', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Created</th>
-              <th style={{ padding: '16px 24px', fontWeight: 600, color: 'var(--text-muted)', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'right' }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {isLoading ? (
+      {/* ── Table ── */}
+      <div style={{ border: '1px solid var(--border)', borderTop: 'none' }}>
+        {isLoading ? (
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '64px', gap: '12px', color: 'var(--muted-fg)' }}>
+            <Spinner size={18} />
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+              Loading
+            </span>
+          </div>
+        ) : urls.length === 0 ? (
+          <EmptyState label="No links found" title="Create your first short link" />
+        ) : (
+          <table className="data-table" aria-label="Short links">
+            <thead>
               <tr>
-                <td colSpan={5} style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                  Loading links...
-                </td>
+                <th scope="col">Short Link</th>
+                <th scope="col">Destination</th>
+                <th scope="col">Status</th>
+                <th scope="col">Created</th>
+                <th scope="col" style={{ textAlign: 'right' }}>Actions</th>
               </tr>
-            ) : urls.length === 0 ? (
-              <tr>
-                <td colSpan={5} style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                  No short links found.
-                </td>
-              </tr>
-            ) : (
-              urls.map((url) => {
-                return (
-                  <tr key={url.id} style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.03)' }}>
-                    <td style={{ padding: '16px 24px' }}>
-                      <div style={{ fontWeight: 600, color: 'var(--text-main)', marginBottom: '4px' }}>
-                        {url.title || 'Untitled Link'}
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ color: 'var(--primary)', fontWeight: 500, fontSize: '13px' }}>
-                          /{url.shortCode}
-                        </span>
-                        <button
-                          onClick={() => copyToClipboard(url.shortCode)}
-                          style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px', display: 'flex' }}
-                          title="Copy Link"
-                        >
-                          {copiedCode === url.shortCode ? <Check size={14} style={{ color: 'var(--text-success)' }} /> : <Clipboard size={14} />}
-                        </button>
-                      </div>
-                    </td>
-                    <td style={{ padding: '16px 24px', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      <a href={url.originalUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-muted)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                        {url.originalUrl} <ExternalLink size={12} />
-                      </a>
-                    </td>
-                    <td style={{ padding: '16px 24px' }}>{getStatusBadge(url)}</td>
-                    <td style={{ padding: '16px 24px', color: 'var(--text-muted)', fontSize: '13px' }}>
-                      {new Date(url.createdAt).toLocaleDateString()}
-                    </td>
-                    <td style={{ padding: '16px 24px', textAlign: 'right' }}>
-                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '12px' }}>
-                        <button
-                          onClick={() => handleToggleActive(url.id, url.isActive)}
-                          style={{ background: 'transparent', border: 'none', color: url.isActive ? 'var(--primary)' : 'var(--text-muted)', cursor: 'pointer', padding: '4px', display: 'flex' }}
-                          title={url.isActive ? 'Deactivate' : 'Activate'}
-                        >
-                          {url.isActive ? <ToggleRight size={24} /> : <ToggleLeft size={24} />}
-                        </button>
-                        <button
-                          onClick={() => handleDelete(url.id)}
-                          style={{ background: 'transparent', border: 'none', color: 'var(--text-error)', cursor: 'pointer', padding: '4px', display: 'flex' }}
-                          title="Delete Link"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {urls.map((url) => (
+                <tr key={url.id}>
+                  {/* Short link + title */}
+                  <td style={{ minWidth: '160px' }}>
+                    <div
+                      style={{
+                        fontFamily: 'var(--font-display)',
+                        fontWeight: 600,
+                        fontSize: '0.9375rem',
+                        letterSpacing: '-0.01em',
+                        color: 'var(--fg)',
+                        marginBottom: '4px',
+                      }}
+                    >
+                      {url.title || 'Untitled'}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span
+                        className="font-mono"
+                        style={{ color: 'var(--accent)', fontSize: '0.75rem', fontWeight: 500 }}
+                      >
+                        /{url.shortCode}
+                      </span>
+                      <button
+                        onClick={() => copyToClipboard(url.shortCode)}
+                        className="btn-icon"
+                        style={{ padding: '2px' }}
+                        aria-label={copiedCode === url.shortCode ? 'Copied!' : `Copy /${url.shortCode}`}
+                        title={copiedCode === url.shortCode ? 'Copied!' : 'Copy short URL'}
+                      >
+                        {copiedCode === url.shortCode
+                          ? <Check size={13} strokeWidth={2} style={{ color: '#34d399' }} />
+                          : <Clipboard size={13} strokeWidth={1.5} />
+                        }
+                      </button>
+                    </div>
+                  </td>
 
-        {/* Pagination controls */}
+                  {/* Destination */}
+                  <td style={{ maxWidth: '280px' }}>
+                    <a
+                      href={url.originalUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        color: 'var(--muted-fg)',
+                        textDecoration: 'none',
+                        fontSize: '0.8125rem',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        maxWidth: '100%',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        transition: 'color 150ms',
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--fg)')}
+                      onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--muted-fg)')}
+                    >
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{url.originalUrl}</span>
+                      <ExternalLink size={11} strokeWidth={1.5} style={{ flexShrink: 0 }} aria-hidden="true" />
+                    </a>
+                  </td>
+
+                  {/* Status badge */}
+                  <td>{getStatusBadge(url)}</td>
+
+                  {/* Created date */}
+                  <td>
+                    <span
+                      className="font-mono"
+                      style={{ fontSize: '0.75rem', color: 'var(--muted-fg)', letterSpacing: '0.02em' }}
+                    >
+                      {new Date(url.createdAt).toLocaleDateString('en-GB', {
+                        day: '2-digit',
+                        month: 'short',
+                        year: 'numeric',
+                      })}
+                    </span>
+                  </td>
+
+                  {/* Actions */}
+                  <td style={{ textAlign: 'right' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                      {/* Toggle active */}
+                      <button
+                        onClick={() => handleToggleActive(url.id, url.isActive)}
+                        className="btn-icon"
+                        aria-label={url.isActive ? `Deactivate /${url.shortCode}` : `Activate /${url.shortCode}`}
+                        title={url.isActive ? 'Deactivate' : 'Activate'}
+                        style={{ color: url.isActive ? 'var(--accent)' : 'var(--muted-fg)' }}
+                      >
+                        {url.isActive
+                          ? <ToggleRight size={22} strokeWidth={1.5} />
+                          : <ToggleLeft size={22} strokeWidth={1.5} />
+                        }
+                      </button>
+
+                      {/* Delete */}
+                      <button
+                        onClick={() => openDeleteModal(url)}
+                        className="btn-danger"
+                        aria-label={`Delete /${url.shortCode}`}
+                        title="Delete link"
+                      >
+                        <Trash2 size={15} strokeWidth={1.5} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+
+        {/* Pagination */}
         {totalPages > 1 && (
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '16px', padding: '16px 24px', borderTop: '1px solid rgba(255, 255, 255, 0.05)' }}>
+          <div className="pagination">
             <button
+              id="btn-prev-page"
               disabled={page === 1}
               className="btn-secondary"
-              style={{ padding: '8px 16px' }}
+              style={{ padding: '8px 20px', fontSize: '0.75rem' }}
               onClick={() => setPage(page - 1)}
             >
-              Previous
+              Prev
             </button>
-            <span style={{ fontSize: '14px', color: 'var(--text-muted)' }}>
-              Page {page} of {totalPages}
+            <span className="pagination__label">
+              {page} / {totalPages}
             </span>
             <button
+              id="btn-next-page"
               disabled={page === totalPages}
               className="btn-secondary"
-              style={{ padding: '8px 16px' }}
+              style={{ padding: '8px 20px', fontSize: '0.75rem' }}
               onClick={() => setPage(page + 1)}
             >
               Next
@@ -281,97 +351,144 @@ export const LinksPage: React.FC = () => {
         )}
       </div>
 
-      {/* Creation Modal */}
-      {isModalOpen && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0, 0, 0, 0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-          <div className="glass-panel" style={{ width: '100%', maxWidth: '500px', padding: '32px', position: 'relative' }}>
-            <button
-              onClick={() => setIsModalOpen(false)}
-              style={{ position: 'absolute', top: '16px', right: '16px', background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
-            >
-              <X size={20} />
-            </button>
-
-            <h2 style={{ fontFamily: 'Outfit', fontSize: '20px', fontWeight: 700, marginBottom: '24px' }}>
-              Create Short Link
-            </h2>
-
-            {modalError && (
-              <div style={{ display: 'flex', gap: '8px', background: 'rgba(248, 113, 113, 0.1)', border: '1px solid rgba(248, 113, 113, 0.2)', borderRadius: '8px', padding: '12px', color: 'var(--text-error)', fontSize: '13px', marginBottom: '20px' }}>
-                <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: '2px' }} />
-                <span>{modalError}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '6px' }}>
-                  Destination URL
-                </label>
-                <input
-                  type="url"
-                  required
-                  className="form-input"
-                  placeholder="https://example.com/very-long-path"
-                  value={originalUrl}
-                  onChange={(e) => setOriginalUrl(e.target.value)}
-                />
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '6px' }}>
-                  Link Title (Optional)
-                </label>
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="My campaign URL"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                />
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '6px' }}>
-                  Custom Code (Optional)
-                </label>
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="e.g. promo2026"
-                  value={customCode}
-                  onChange={(e) => setCustomCode(e.target.value.toLowerCase().replace(/[^a-z0-9]/g, ''))}
-                />
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '6px' }}>
-                  Expiration Date (Optional)
-                </label>
-                <div style={{ position: 'relative' }}>
-                  <Calendar size={16} style={{ position: 'absolute', left: '14px', top: '15px', color: 'var(--text-muted)' }} />
-                  <input
-                    type="datetime-local"
-                    className="form-input"
-                    style={{ paddingLeft: '42px' }}
-                    value={expiresAt}
-                    onChange={(e) => setExpiresAt(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
-                <button type="button" className="btn-secondary" style={{ flex: 1 }} onClick={() => setIsModalOpen(false)}>
-                  Cancel
-                </button>
-                <button type="submit" disabled={isSubmitting} className="btn-primary" style={{ flex: 1 }}>
-                  {isSubmitting ? 'Creating...' : 'Create'}
-                </button>
-              </div>
-            </form>
+      {/* ── Create Modal ── */}
+      <Modal isOpen={isModalOpen} onClose={handleCloseModal} title="New Short Link">
+        {modalError && (
+          <div className="error-banner" role="alert" style={{ marginBottom: '20px' }}>
+            <AlertTriangle size={15} strokeWidth={1.5} style={{ flexShrink: 0, color: 'var(--accent)' }} />
+            <span>{modalError}</span>
           </div>
+        )}
+
+        <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }} noValidate>
+          <div>
+            <label className="form-label" htmlFor="modal-dest-url">Destination URL</label>
+            <input
+              id="modal-dest-url"
+              type="url"
+              required
+              className="form-input"
+              placeholder="https://example.com/very/long/path"
+              value={originalUrl}
+              onChange={(e) => setOriginalUrl(e.target.value)}
+            />
+          </div>
+
+          <div>
+            <label className="form-label" htmlFor="modal-title">Link Title (optional)</label>
+            <input
+              id="modal-title"
+              type="text"
+              className="form-input"
+              placeholder="My campaign link"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+            />
+          </div>
+
+          <div>
+            <label className="form-label" htmlFor="modal-code">Custom Code (optional)</label>
+            <input
+              id="modal-code"
+              type="text"
+              className="form-input"
+              placeholder="e.g. promo2026"
+              value={customCode}
+              onChange={(e) => setCustomCode(e.target.value.toLowerCase().replace(/[^a-z0-9]/g, ''))}
+            />
+            <p className="form-hint">Lowercase letters and numbers only.</p>
+          </div>
+
+          <div>
+            <label className="form-label" htmlFor="modal-expires">Expiration Date (optional)</label>
+            <div className="form-input-icon-wrap">
+              <Calendar size={14} strokeWidth={1.5} className="form-input-icon" aria-hidden="true" />
+              <input
+                id="modal-expires"
+                type="datetime-local"
+                className="form-input"
+                value={expiresAt}
+                onChange={(e) => setExpiresAt(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '12px', marginTop: '4px' }}>
+            <button
+              type="button"
+              className="btn-secondary"
+              style={{ flex: 1, justifyContent: 'center', height: '44px', fontSize: '0.8rem' }}
+              onClick={handleCloseModal}
+            >
+              Cancel
+            </button>
+            <button
+              id="btn-create-submit"
+              type="submit"
+              disabled={isSubmitting}
+              className="btn-primary"
+              style={{ flex: 1, justifyContent: 'center', height: '44px' }}
+            >
+              {isSubmitting ? <Spinner size={16} /> : 'Create Link'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* ── Delete Confirmation Modal ── */}
+      <Modal
+        isOpen={isDeleteOpen}
+        onClose={() => { setIsDeleteOpen(false); setDeleteTarget(null); }}
+        title="Delete Short Link"
+      >
+        <p style={{ color: 'var(--muted-fg)', fontSize: '0.9375rem', lineHeight: 1.6, marginBottom: '8px' }}>
+          This will permanently delete{' '}
+          <span className="font-mono" style={{ color: 'var(--accent)' }}>
+            /{deleteTarget?.shortCode}
+          </span>
+          {deleteTarget?.title ? ` (${deleteTarget.title})` : ''}.
+          This action cannot be undone.
+        </p>
+        <p style={{ color: 'var(--muted-fg)', fontSize: '0.8125rem', marginBottom: '28px' }}>
+          All analytics data for this link will also be removed.
+        </p>
+
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <button
+            type="button"
+            className="btn-secondary"
+            style={{ flex: 1, justifyContent: 'center', height: '44px', fontSize: '0.8rem' }}
+            onClick={() => { setIsDeleteOpen(false); setDeleteTarget(null); }}
+          >
+            Cancel
+          </button>
+          <button
+            id="btn-delete-confirm"
+            type="button"
+            disabled={isDeleting}
+            onClick={handleDelete}
+            className="btn-secondary"
+            style={{
+              flex: 1,
+              justifyContent: 'center',
+              height: '44px',
+              fontSize: '0.8rem',
+              borderColor: 'var(--accent)',
+              color: 'var(--accent)',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--accent)';
+              e.currentTarget.style.color = 'var(--accent-fg)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent';
+              e.currentTarget.style.color = 'var(--accent)';
+            }}
+          >
+            {isDeleting ? <Spinner size={16} /> : 'Delete'}
+          </button>
         </div>
-      )}
+      </Modal>
     </div>
   );
 };
