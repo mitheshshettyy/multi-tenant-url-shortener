@@ -17,6 +17,7 @@ describe('AuthService', () => {
   let passwordService: jest.Mocked<PasswordService>;
   let jwtService: jest.Mocked<JwtService>;
   let configService: jest.Mocked<ConfigService>;
+  let prismaService: any;
 
   const authConfig = {
     accessTokenSecret: 'access-secret',
@@ -57,7 +58,24 @@ describe('AuthService', () => {
       getOrThrow: jest.fn().mockReturnValue(authConfig),
     } as unknown as jest.Mocked<ConfigService>;
 
-    authService = new AuthService(usersService, passwordService, jwtService, configService);
+    prismaService = {
+      tenant: {
+        findUnique: jest.fn(),
+        create: jest.fn(),
+      },
+      user: {
+        create: jest.fn(),
+      },
+      $transaction: jest.fn((callback) => callback(prismaService)),
+    };
+
+    authService = new AuthService(
+      usersService,
+      passwordService,
+      jwtService,
+      configService,
+      prismaService,
+    );
   });
 
   describe('login', () => {
@@ -173,6 +191,65 @@ describe('AuthService', () => {
       await authService.logout(user.id);
 
       expect(usersService.updateRefreshTokenHash).toHaveBeenCalledWith(user.id, null);
+    });
+  });
+
+  describe('register', () => {
+    const registerDto = {
+      tenantName: 'New Tenant',
+      tenantSlug: 'new-tenant',
+      email: 'admin@newtenant.com',
+      password: 'password123',
+    };
+
+    it('creates a tenant and user and returns tokens', async () => {
+      usersService.findByEmail.mockResolvedValue(null);
+      prismaService.tenant.findUnique.mockResolvedValue(null);
+      passwordService.hash.mockResolvedValue('hashed-password');
+      prismaService.tenant.create.mockResolvedValue({ id: 'tenant-2', name: 'New Tenant', slug: 'new-tenant' });
+      prismaService.user.create.mockResolvedValue({
+        id: 'user-2',
+        tenantId: 'tenant-2',
+        email: 'admin@newtenant.com',
+        passwordHash: 'hashed-password',
+        role: Role.TENANT_ADMIN,
+        refreshTokenHash: null,
+      });
+      jwtService.signAsync.mockResolvedValueOnce('access.jwt').mockResolvedValueOnce('refresh.jwt');
+      usersService.updateRefreshTokenHash.mockResolvedValue({} as any);
+
+      const result = await authService.register(registerDto);
+
+      expect(result.accessToken).toBe('access.jwt');
+      expect(result.refreshToken).toBe('refresh.jwt');
+      expect(prismaService.tenant.create).toHaveBeenCalledWith({
+        data: { name: 'New Tenant', slug: 'new-tenant' },
+      });
+      expect(prismaService.user.create).toHaveBeenCalledWith({
+        data: {
+          tenantId: 'tenant-2',
+          email: 'admin@newtenant.com',
+          passwordHash: 'hashed-password',
+          role: Role.TENANT_ADMIN,
+        },
+      });
+    });
+
+    it('throws ConflictException if email is already in use', async () => {
+      usersService.findByEmail.mockResolvedValue(user);
+
+      await expect(authService.register(registerDto)).rejects.toThrow(
+        'Email already in use',
+      );
+    });
+
+    it('throws ConflictException if tenant slug is already in use', async () => {
+      usersService.findByEmail.mockResolvedValue(null);
+      prismaService.tenant.findUnique.mockResolvedValue({ id: 'tenant-1' });
+
+      await expect(authService.register(registerDto)).rejects.toThrow(
+        'Tenant slug already in use',
+      );
     });
   });
 });

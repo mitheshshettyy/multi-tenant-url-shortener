@@ -14,4 +14,8 @@ export enum Permission {
 
   // Analytics — no endpoints exist yet
   ANALYTICS_READ = 'analytics:read',
+
+  // Platform-wide admin (SUPER_ADMIN only)
+  PLATFORM_READ = 'platform:read',
+  PLATFORM_MANAGE = 'platform:manage',
 }

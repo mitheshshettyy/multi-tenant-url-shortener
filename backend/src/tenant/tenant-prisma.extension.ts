@@ -79,6 +79,7 @@ export function tenantScopingExtension(tenantContext: TenantContextService) {
     query: {
       user: scopedModelOperations(tenantContext),
       url: scopedModelOperations(tenantContext),
+      click: scopedModelOperations(tenantContext),
     },
   });
 }
