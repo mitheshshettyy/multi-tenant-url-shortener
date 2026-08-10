@@ -5,7 +5,6 @@ import {
   Search,
   ExternalLink,
   Trash2,
-  Calendar,
   ToggleLeft,
   ToggleRight,
   Clipboard,
@@ -17,6 +16,7 @@ import { Badge } from '../components/ui/Badge';
 import { EmptyState } from '../components/ui/EmptyState';
 import { Spinner } from '../components/ui/Spinner';
 import { Modal } from '../components/ui/Modal';
+import { DateTimePicker } from '../components/ui/DateTimePicker';
 
 interface Url {
   id: string;
@@ -408,17 +408,14 @@ export const LinksPage: React.FC = () => {
 
           <div>
             <label className="form-label" htmlFor="modal-expires">EXPIRATION DATE (OPTIONAL)</label>
-            <div className="form-input-icon-wrap">
-              <Calendar size={15} strokeWidth={1.5} className="form-input-icon" aria-hidden="true" />
-              <input
-                id="modal-expires"
-                type="datetime-local"
-                className="form-input"
-                min={new Date().toISOString().slice(0, 16)}
-                value={expiresAt}
-                onChange={(e) => setExpiresAt(e.target.value)}
-              />
-            </div>
+            <DateTimePicker
+              id="modal-expires"
+              value={expiresAt}
+              onChange={(val) => {
+                setExpiresAt(val);
+                setModalError(null);
+              }}
+            />
           </div>
 
           <div style={{ display: 'flex', gap: '12px', marginTop: '8px', paddingTop: '8px', borderTop: '1px solid var(--border)' }}>
