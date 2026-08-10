@@ -4,9 +4,8 @@ import api from '../../utils/api';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { StatCard } from '../../components/ui/StatCard';
 import { Spinner } from '../../components/ui/Spinner';
-import { Divider } from '../../components/ui/Divider';
 import { Badge } from '../../components/ui/Badge';
-import { ArrowLeft, ExternalLink } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 
 interface TenantDetail {
   id: string;
