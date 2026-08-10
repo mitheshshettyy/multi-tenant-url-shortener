@@ -2,7 +2,6 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../utils/api';
 import { PageHeader } from '../../components/ui/PageHeader';
-import { Badge } from '../../components/ui/Badge';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { Spinner } from '../../components/ui/Spinner';
 import { Modal } from '../../components/ui/Modal';
@@ -60,8 +59,9 @@ export const AdminTenantsPage: React.FC = () => {
       setForm({ tenantName: '', tenantSlug: '', adminEmail: '', adminPassword: '' });
       setPage(1);
       fetchTenants();
-    } catch (err: any) {
-      setCreateError(err.response?.data?.message || 'Failed to create tenant');
+    } catch (err: unknown) {
+      const errorResponse = err as { response?: { data?: { message?: string } } };
+      setCreateError(errorResponse.response?.data?.message || 'Failed to create tenant');
     } finally { setIsSubmitting(false); }
   };
 

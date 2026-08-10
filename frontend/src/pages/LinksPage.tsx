@@ -74,6 +74,12 @@ export const LinksPage: React.FC = () => {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setModalError(null);
+
+    if (expiresAt && new Date(expiresAt) <= new Date()) {
+      setModalError('Expiration date must be in the future');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       await api.post('/urls', {
@@ -89,8 +95,9 @@ export const LinksPage: React.FC = () => {
       setExpiresAt('');
       setPage(1);
       fetchUrls();
-    } catch (err: any) {
-      setModalError(err.response?.data?.message || 'Failed to create short link');
+    } catch (err: unknown) {
+      const errorResponse = err as { response?: { data?: { message?: string } } };
+      setModalError(errorResponse.response?.data?.message || 'Failed to create short link');
     } finally {
       setIsSubmitting(false);
     }
@@ -158,11 +165,11 @@ export const LinksPage: React.FC = () => {
         action={
           <button
             id="btn-create-link"
-            className="btn-primary"
+            className="btn-primary-filled"
             onClick={() => setIsModalOpen(true)}
             aria-label="Create new short link"
           >
-            <Plus size={16} strokeWidth={1.5} aria-hidden="true" />
+            <Plus size={16} strokeWidth={2} aria-hidden="true" />
             New Link
           </button>
         }
@@ -185,7 +192,7 @@ export const LinksPage: React.FC = () => {
       </div>
 
       {/* ── Table ── */}
-      <div style={{ border: '1px solid var(--border)', borderTop: 'none' }}>
+      <div style={{ border: '1px solid var(--border)', borderTop: 'none', background: 'var(--card-bg)' }}>
         {isLoading ? (
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '64px', gap: '12px', color: 'var(--muted-fg)' }}>
             <Spinner size={18} />
@@ -329,8 +336,8 @@ export const LinksPage: React.FC = () => {
             <button
               id="btn-prev-page"
               disabled={page === 1}
-              className="btn-secondary"
-              style={{ padding: '8px 20px', fontSize: '0.75rem' }}
+              className="btn-secondary-action"
+              style={{ padding: '6px 16px', fontSize: '0.75rem', height: '36px' }}
               onClick={() => setPage(page - 1)}
             >
               Prev
@@ -341,8 +348,8 @@ export const LinksPage: React.FC = () => {
             <button
               id="btn-next-page"
               disabled={page === totalPages}
-              className="btn-secondary"
-              style={{ padding: '8px 20px', fontSize: '0.75rem' }}
+              className="btn-secondary-action"
+              style={{ padding: '6px 16px', fontSize: '0.75rem', height: '36px' }}
               onClick={() => setPage(page + 1)}
             >
               Next
@@ -360,9 +367,9 @@ export const LinksPage: React.FC = () => {
           </div>
         )}
 
-        <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }} noValidate>
+        <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }} noValidate>
           <div>
-            <label className="form-label" htmlFor="modal-dest-url">Destination URL</label>
+            <label className="form-label" htmlFor="modal-dest-url">DESTINATION URL</label>
             <input
               id="modal-dest-url"
               type="url"
@@ -375,7 +382,7 @@ export const LinksPage: React.FC = () => {
           </div>
 
           <div>
-            <label className="form-label" htmlFor="modal-title">Link Title (optional)</label>
+            <label className="form-label" htmlFor="modal-title">LINK TITLE (OPTIONAL)</label>
             <input
               id="modal-title"
               type="text"
@@ -387,11 +394,11 @@ export const LinksPage: React.FC = () => {
           </div>
 
           <div>
-            <label className="form-label" htmlFor="modal-code">Custom Code (optional)</label>
+            <label className="form-label" htmlFor="modal-code">CUSTOM CODE (OPTIONAL)</label>
             <input
               id="modal-code"
               type="text"
-              className="form-input"
+              className="form-input font-mono"
               placeholder="e.g. promo2026"
               value={customCode}
               onChange={(e) => setCustomCode(e.target.value.toLowerCase().replace(/[^a-z0-9]/g, ''))}
@@ -400,24 +407,25 @@ export const LinksPage: React.FC = () => {
           </div>
 
           <div>
-            <label className="form-label" htmlFor="modal-expires">Expiration Date (optional)</label>
+            <label className="form-label" htmlFor="modal-expires">EXPIRATION DATE (OPTIONAL)</label>
             <div className="form-input-icon-wrap">
-              <Calendar size={14} strokeWidth={1.5} className="form-input-icon" aria-hidden="true" />
+              <Calendar size={15} strokeWidth={1.5} className="form-input-icon" aria-hidden="true" />
               <input
                 id="modal-expires"
                 type="datetime-local"
                 className="form-input"
+                min={new Date().toISOString().slice(0, 16)}
                 value={expiresAt}
                 onChange={(e) => setExpiresAt(e.target.value)}
               />
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '12px', marginTop: '4px' }}>
+          <div style={{ display: 'flex', gap: '12px', marginTop: '8px', paddingTop: '8px', borderTop: '1px solid var(--border)' }}>
             <button
               type="button"
-              className="btn-secondary"
-              style={{ flex: 1, justifyContent: 'center', height: '44px', fontSize: '0.8rem' }}
+              className="btn-secondary-action"
+              style={{ flex: 1 }}
               onClick={handleCloseModal}
             >
               Cancel
@@ -426,8 +434,8 @@ export const LinksPage: React.FC = () => {
               id="btn-create-submit"
               type="submit"
               disabled={isSubmitting}
-              className="btn-primary"
-              style={{ flex: 1, justifyContent: 'center', height: '44px' }}
+              className="btn-primary-filled"
+              style={{ flex: 1 }}
             >
               {isSubmitting ? <Spinner size={16} /> : 'Create Link'}
             </button>
@@ -441,23 +449,22 @@ export const LinksPage: React.FC = () => {
         onClose={() => { setIsDeleteOpen(false); setDeleteTarget(null); }}
         title="Delete Short Link"
       >
-        <p style={{ color: 'var(--muted-fg)', fontSize: '0.9375rem', lineHeight: 1.6, marginBottom: '8px' }}>
+        <p style={{ color: 'var(--fg)', fontSize: '0.9375rem', lineHeight: 1.6, marginBottom: '8px' }}>
           This will permanently delete{' '}
-          <span className="font-mono" style={{ color: 'var(--accent)' }}>
+          <span className="font-mono" style={{ color: 'var(--accent)', fontWeight: 600 }}>
             /{deleteTarget?.shortCode}
           </span>
           {deleteTarget?.title ? ` (${deleteTarget.title})` : ''}.
-          This action cannot be undone.
         </p>
-        <p style={{ color: 'var(--muted-fg)', fontSize: '0.8125rem', marginBottom: '28px' }}>
-          All analytics data for this link will also be removed.
+        <p style={{ color: 'var(--muted-fg)', fontSize: '0.8125rem', marginBottom: '24px' }}>
+          All recorded click analytics data for this link will also be permanently deleted. This action cannot be undone.
         </p>
 
-        <div style={{ display: 'flex', gap: '12px' }}>
+        <div style={{ display: 'flex', gap: '12px', paddingTop: '8px', borderTop: '1px solid var(--border)' }}>
           <button
             type="button"
-            className="btn-secondary"
-            style={{ flex: 1, justifyContent: 'center', height: '44px', fontSize: '0.8rem' }}
+            className="btn-secondary-action"
+            style={{ flex: 1 }}
             onClick={() => { setIsDeleteOpen(false); setDeleteTarget(null); }}
           >
             Cancel
@@ -467,25 +474,15 @@ export const LinksPage: React.FC = () => {
             type="button"
             disabled={isDeleting}
             onClick={handleDelete}
-            className="btn-secondary"
+            className="btn-primary-filled"
             style={{
               flex: 1,
-              justifyContent: 'center',
-              height: '44px',
-              fontSize: '0.8rem',
-              borderColor: 'var(--accent)',
-              color: 'var(--accent)',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'var(--accent)';
-              e.currentTarget.style.color = 'var(--accent-fg)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'transparent';
-              e.currentTarget.style.color = 'var(--accent)';
+              background: '#DC2626',
+              borderColor: '#DC2626',
+              color: '#FFFFFF',
             }}
           >
-            {isDeleting ? <Spinner size={16} /> : 'Delete'}
+            {isDeleting ? <Spinner size={16} /> : 'Delete Link'}
           </button>
         </div>
       </Modal>
