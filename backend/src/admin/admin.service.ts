@@ -1,7 +1,8 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { type Prisma, Role } from '@prisma/client';
 import { PrismaService } from '../database/prisma.service';
 import { PasswordService } from '../auth/password.service';
-import { Role } from '@prisma/client';
+import { RedirectCacheService } from '../redirect/redirect-cache.service';
 
 // The reserved platform tenant slug. This tenant is home to SUPER_ADMIN
 // users and is explicitly excluded from the tenants list shown in the admin UI.
@@ -14,6 +15,7 @@ export class AdminService {
      *  intentionally cross-tenant. Never inject TenantPrismaService here. */
     private readonly prisma: PrismaService,
     private readonly passwordService: PasswordService,
+    private readonly redirectCache: RedirectCacheService,
   ) {}
 
   // ── Platform stats ─────────────────────────────────────────────────────
@@ -243,7 +245,7 @@ export class AdminService {
     const { page, limit, tenantId, search } = opts;
     const skip = (page - 1) * limit;
 
-    const where: any = {
+    const where: Prisma.UserWhereInput = {
       role: { not: Role.SUPER_ADMIN },
       ...(tenantId ? { tenantId } : {}),
       ...(search
@@ -280,7 +282,7 @@ export class AdminService {
     const { page, limit, tenantId, search } = opts;
     const skip = (page - 1) * limit;
 
-    const where: any = {
+    const where: Prisma.UrlWhereInput = {
       deletedAt: null,
       ...(tenantId ? { tenantId } : {}),
       ...(search
@@ -324,5 +326,35 @@ export class AdminService {
       })),
       meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
     };
+  }
+
+  // ── Link status management ─────────────────────────────────────────────
+
+  async toggleLinkStatus(linkId: string, isActive: boolean) {
+    const url = await this.prisma.url.findFirst({
+      where: { id: linkId, deletedAt: null },
+    });
+
+    if (!url) {
+      throw new NotFoundException('Link not found');
+    }
+
+    const updated = await this.prisma.url.update({
+      where: { id: linkId },
+      data: { isActive },
+      select: {
+        id: true,
+        shortCode: true,
+        isActive: true,
+        tenant: { select: { id: true, name: true, slug: true } },
+      },
+    });
+
+    // Invalidate the Redis cache so the redirect service re-reads the
+    // updated isActive state on the next request rather than serving a
+    // stale cached entry.
+    await this.redirectCache.invalidate(url.shortCode);
+
+    return updated;
   }
 }

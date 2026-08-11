@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Clock, X, Check } from 'lucide-react';
 
 interface DateTimePickerProps {
@@ -7,70 +7,112 @@ interface DateTimePickerProps {
   id?: string;
 }
 
+interface DraftState {
+  year: number;
+  month: number;
+  day: number | null;
+  hour12: number;
+  minute: number;
+  ampm: 'AM' | 'PM';
+}
+
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
+
 export const DateTimePicker: React.FC<DateTimePickerProps> = ({ value, onChange, id }) => {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Parsed current selected date or fallback
-  const parsedDate = value ? new Date(value) : null;
-  const isValidDate = parsedDate && !isNaN(parsedDate.getTime());
+  // Parsed external date
+  const parsedValue = useMemo(() => {
+    if (!value) return null;
+    const d = new Date(value);
+    return isNaN(d.getTime()) ? null : d;
+  }, [value]);
 
-  // Current view year & month for calendar navigation
-  const [viewDate, setViewDate] = useState<Date>(() => {
-    if (isValidDate) return new Date(parsedDate.getFullYear(), parsedDate.getMonth(), 1);
+  // View state (calendar navigation)
+  const [viewDate, setViewDate] = useState<{ year: number; month: number }>(() => {
+    if (parsedValue) {
+      return { year: parsedValue.getFullYear(), month: parsedValue.getMonth() };
+    }
     const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth(), 1);
+    return { year: now.getFullYear(), month: now.getMonth() };
   });
 
-  // Selected date components
-  const [selectedDay, setSelectedDay] = useState<number | null>(() => (isValidDate ? parsedDate.getDate() : null));
-  const [selectedHour12, setSelectedHour12] = useState<number>(() => {
-    if (!isValidDate) return 12;
-    const h = parsedDate.getHours();
-    if (h === 0) return 12;
-    if (h > 12) return h - 12;
-    return h;
-  });
-  const [selectedMinute, setSelectedMinute] = useState<number>(() => (isValidDate ? parsedDate.getMinutes() : 0));
-  const [selectedAmpm, setSelectedAmpm] = useState<'AM' | 'PM'>(() => {
-    if (!isValidDate) return 'PM';
-    return parsedDate.getHours() >= 12 ? 'PM' : 'AM';
+  // Draft state (uncommitted user selection in popover)
+  const [draft, setDraft] = useState<DraftState>(() => {
+    if (parsedValue) {
+      const h = parsedValue.getHours();
+      return {
+        year: parsedValue.getFullYear(),
+        month: parsedValue.getMonth(),
+        day: parsedValue.getDate(),
+        hour12: h === 0 ? 12 : h > 12 ? h - 12 : h,
+        minute: parsedValue.getMinutes(),
+        ampm: h >= 12 ? 'PM' : 'AM',
+      };
+    }
+    const now = new Date();
+    return {
+      year: now.getFullYear(),
+      month: now.getMonth(),
+      day: null,
+      hour12: 12,
+      minute: 0,
+      ampm: 'PM',
+    };
   });
 
   const [validationError, setValidationError] = useState<string | null>(null);
 
-  // Sync internal state when external value changes
+  // Sync draft & view state when popover opens or when external `value` changes
   useEffect(() => {
-    if (value) {
-      const d = new Date(value);
-      if (!isNaN(d.getTime())) {
-        setViewDate(new Date(d.getFullYear(), d.getMonth(), 1));
-        setSelectedDay(d.getDate());
-        const h = d.getHours();
-        setSelectedHour12(h === 0 ? 12 : h > 12 ? h - 12 : h);
-        setSelectedMinute(d.getMinutes());
-        setSelectedAmpm(h >= 12 ? 'PM' : 'AM');
-      }
+    if (parsedValue) {
+      const h = parsedValue.getHours();
+      const newDraft: DraftState = {
+        year: parsedValue.getFullYear(),
+        month: parsedValue.getMonth(),
+        day: parsedValue.getDate(),
+        hour12: h === 0 ? 12 : h > 12 ? h - 12 : h,
+        minute: parsedValue.getMinutes(),
+        ampm: h >= 12 ? 'PM' : 'AM',
+      };
+      setDraft(newDraft);
+      setViewDate({ year: newDraft.year, month: newDraft.month });
+    } else {
+      const now = new Date();
+      setDraft({
+        year: now.getFullYear(),
+        month: now.getMonth(),
+        day: null,
+        hour12: 12,
+        minute: 0,
+        ampm: 'PM',
+      });
+      setViewDate({ year: now.getFullYear(), month: now.getMonth() });
     }
-  }, [value]);
+    setValidationError(null);
+  }, [value, parsedValue, isOpen]);
 
   // Close popover when clicking outside
   useEffect(() => {
+    if (!isOpen) return;
     const handleClickOutside = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setIsOpen(false);
       }
     };
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
+    document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isOpen]);
 
   // Close popover on Escape key
   useEffect(() => {
+    if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
+      if (e.key === 'Escape') {
         setIsOpen(false);
       }
     };
@@ -85,32 +127,78 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({ value, onChange,
     return h12;
   };
 
-  // Build target Date object from current selections
-  const buildTargetDate = useCallback(
-    (dayNum: number, h12: number, min: number, ampm: 'AM' | 'PM') => {
-      const year = viewDate.getFullYear();
-      const month = viewDate.getMonth();
-      const h24 = get24Hour(h12, ampm);
-      return new Date(year, month, dayNum, h24, min, 0, 0);
-    },
-    [viewDate],
-  );
+  // Build target Date object from draft components
+  const buildTargetDate = useCallback((y: number, m: number, d: number, h12: number, min: number, ampm: 'AM' | 'PM') => {
+    const h24 = get24Hour(h12, ampm);
+    return new Date(y, m, d, h24, min, 0, 0);
+  }, []);
 
-  // Handle Month Navigation
+  // Month Navigation
   const prevMonth = () => {
-    setViewDate((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+    setViewDate((prev) =>
+      prev.month === 0 ? { year: prev.year - 1, month: 11 } : { ...prev, month: prev.month - 1 }
+    );
   };
 
   const nextMonth = () => {
-    setViewDate((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+    setViewDate((prev) =>
+      prev.month === 11 ? { year: prev.year + 1, month: 0 } : { ...prev, month: prev.month + 1 }
+    );
   };
 
-  // Calendar Day Click
-  const handleSelectDay = (day: number) => {
-    setSelectedDay(day);
-    setValidationError(null);
+  // Year options for dropdown (current year to current year + 10)
+  const yearOptions = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    const years: number[] = [];
+    for (let y = currentYear; y <= currentYear + 10; y++) {
+      years.push(y);
+    }
+    return years;
+  }, []);
 
-    const target = buildTargetDate(day, selectedHour12, selectedMinute, selectedAmpm);
+  // Memoized Grid Calculation
+  const gridData = useMemo(() => {
+    const { year, month } = viewDate;
+    const firstDayOfWeek = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayYear = today.getFullYear();
+    const todayMonth = today.getMonth();
+    const todayDay = today.getDate();
+
+    const days = [];
+    for (let dayNum = 1; dayNum <= daysInMonth; dayNum++) {
+      const checkDate = new Date(year, month, dayNum, 23, 59, 59);
+      const isPast = checkDate < today;
+      const isToday = todayYear === year && todayMonth === month && todayDay === dayNum;
+      const isSelected = draft.day === dayNum && draft.year === year && draft.month === month;
+      const ariaLabel = `${MONTH_NAMES[month]} ${dayNum}, ${year}`;
+
+      days.push({
+        dayNum,
+        isPast,
+        isToday,
+        isSelected,
+        ariaLabel,
+      });
+    }
+
+    return { firstDayOfWeek, days };
+  }, [viewDate, draft.day, draft.year, draft.month]);
+
+  // Calendar Day Click
+  const handleSelectDay = (dayNum: number) => {
+    const newDraft: DraftState = {
+      ...draft,
+      year: viewDate.year,
+      month: viewDate.month,
+      day: dayNum,
+    };
+    setDraft(newDraft);
+
+    const target = buildTargetDate(viewDate.year, viewDate.month, dayNum, draft.hour12, draft.minute, draft.ampm);
     if (target <= new Date()) {
       setValidationError('Expiration date & time must be in the future.');
     } else {
@@ -120,12 +208,12 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({ value, onChange,
 
   // Confirm and Apply Selection
   const handleApply = () => {
-    if (!selectedDay) {
+    if (!draft.day) {
       setValidationError('Please select a date from the calendar.');
       return;
     }
 
-    const target = buildTargetDate(selectedDay, selectedHour12, selectedMinute, selectedAmpm);
+    const target = buildTargetDate(draft.year, draft.month, draft.day, draft.hour12, draft.minute, draft.ampm);
     if (target <= new Date()) {
       setValidationError('Expiration date & time must be in the future.');
       return;
@@ -140,48 +228,42 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({ value, onChange,
   const handleClear = (e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     onChange('');
-    setSelectedDay(null);
+    const now = new Date();
+    setDraft({
+      year: now.getFullYear(),
+      month: now.getMonth(),
+      day: null,
+      hour12: 12,
+      minute: 0,
+      ampm: 'PM',
+    });
     setValidationError(null);
     setIsOpen(false);
   };
 
-  // Format display text for input button
-  const getDisplayText = () => {
-    if (!value || !isValidDate) return null;
-    return parsedDate.toLocaleDateString('en-US', {
+  // Format display text for trigger button
+  const displayText = useMemo(() => {
+    if (!value || !parsedValue) return null;
+    return parsedValue.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
-    }) + ' • ' + parsedDate.toLocaleTimeString('en-US', {
+    }) + ' • ' + parsedValue.toLocaleTimeString('en-US', {
       hour: 'numeric',
       minute: '2-digit',
       hour12: true,
     });
-  };
-
-  // Calendar calculations
-  const viewYear = viewDate.getFullYear();
-  const viewMonth = viewDate.getMonth();
-
-  const monthName = viewDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-  const firstDayOfWeek = new Date(viewYear, viewMonth, 1).getDay();
-  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const isCurrentMonthView = today.getFullYear() === viewYear && today.getMonth() === viewMonth;
-  const todayDateNum = today.getDate();
+  }, [value, parsedValue]);
 
   return (
     <div ref={containerRef} style={{ position: 'relative', width: '100%' }}>
-      {/* ── Field Trigger ── */}
+      {/* ── Trigger Button ── */}
       <button
         type="button"
         id={id}
         aria-haspopup="dialog"
         aria-expanded={isOpen}
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => setIsOpen((prev) => !prev)}
         className="form-input"
         style={{
           display: 'flex',
@@ -197,9 +279,9 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({ value, onChange,
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflow: 'hidden' }}>
           <CalendarIcon size={16} strokeWidth={1.5} style={{ color: value ? 'var(--accent)' : 'var(--muted-fg)', flexShrink: 0 }} />
-          {value && isValidDate ? (
+          {value && parsedValue ? (
             <span style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--fg)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {getDisplayText()}
+              {displayText}
             </span>
           ) : (
             <span style={{ fontSize: '0.875rem', color: '#525252' }}>
@@ -251,14 +333,63 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({ value, onChange,
             boxShadow: '0 20px 40px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.05)',
             zIndex: 1000,
             padding: '20px',
-            animation: 'modalScaleUp 150ms var(--ease-crisp)',
           }}
         >
-          {/* Month & Year Navigation Header */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-            <span className="font-display" style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--fg)', letterSpacing: '-0.01em' }}>
-              {monthName}
-            </span>
+          {/* Header Navigation Controls (Month & Year Dropdowns + Arrows) */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 1 }}>
+              {/* Month Select */}
+              <select
+                aria-label="Select month"
+                value={viewDate.month}
+                onChange={(e) => setViewDate((prev) => ({ ...prev, month: parseInt(e.target.value, 10) }))}
+                className="form-input font-display"
+                style={{
+                  height: '32px',
+                  padding: '0 8px',
+                  fontSize: '0.8125rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  background: '#1A1A1A',
+                  color: 'var(--fg)',
+                  borderColor: 'var(--border)',
+                  flex: 1,
+                }}
+              >
+                {MONTH_NAMES.map((monthName, idx) => (
+                  <option key={monthName} value={idx}>
+                    {monthName}
+                  </option>
+                ))}
+              </select>
+
+              {/* Year Select */}
+              <select
+                aria-label="Select year"
+                value={viewDate.year}
+                onChange={(e) => setViewDate((prev) => ({ ...prev, year: parseInt(e.target.value, 10) }))}
+                className="form-input font-mono"
+                style={{
+                  height: '32px',
+                  padding: '0 6px',
+                  fontSize: '0.8125rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  background: '#1A1A1A',
+                  color: 'var(--fg)',
+                  borderColor: 'var(--border)',
+                  width: '74px',
+                }}
+              >
+                {yearOptions.map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Prev / Next Month Buttons */}
             <div style={{ display: 'flex', gap: '4px' }}>
               <button
                 type="button"
@@ -292,58 +423,28 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({ value, onChange,
 
           {/* Days Grid */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px', marginBottom: '20px' }}>
-            {/* Blank leading slots for month start offset */}
-            {Array.from({ length: firstDayOfWeek }).map((_, idx) => (
+            {/* Blank leading slots */}
+            {Array.from({ length: gridData.firstDayOfWeek }).map((_, idx) => (
               <div key={`blank-${idx}`} style={{ height: '32px' }} />
             ))}
 
             {/* Month days */}
-            {Array.from({ length: daysInMonth }).map((_, idx) => {
-              const dayNum = idx + 1;
-
-              // Check if date is in the past
-              const checkDate = new Date(viewYear, viewMonth, dayNum, 23, 59, 59);
-              const isPast = checkDate < today;
-
-              const isSelected =
-                selectedDay === dayNum &&
-                isValidDate &&
-                parsedDate.getFullYear() === viewYear &&
-                parsedDate.getMonth() === viewMonth;
-
-              const isToday = isCurrentMonthView && dayNum === todayDateNum;
+            {gridData.days.map(({ dayNum, isPast, isToday, isSelected, ariaLabel }) => {
+              const classNames = [
+                'calendar-day-btn',
+                isSelected ? 'is-selected' : '',
+                isToday ? 'is-today' : '',
+              ].filter(Boolean).join(' ');
 
               return (
                 <button
                   key={dayNum}
                   type="button"
                   disabled={isPast}
+                  aria-label={ariaLabel}
+                  aria-selected={isSelected}
                   onClick={() => handleSelectDay(dayNum)}
-                  style={{
-                    height: '32px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontFamily: 'var(--font-mono)',
-                    fontSize: '0.8125rem',
-                    fontWeight: isSelected ? 700 : isToday ? 600 : 400,
-                    background: isSelected ? 'var(--accent)' : 'transparent',
-                    color: isSelected ? '#0A0A0A' : isPast ? '#404040' : 'var(--fg)',
-                    border: isToday && !isSelected ? '1px solid var(--accent)' : '1px solid transparent',
-                    cursor: isPast ? 'not-allowed' : 'pointer',
-                    transition: 'all 120ms ease',
-                    opacity: isPast ? 0.35 : 1,
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!isPast && !isSelected) {
-                      e.currentTarget.style.background = 'var(--muted)';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isPast && !isSelected) {
-                      e.currentTarget.style.background = 'transparent';
-                    }
-                  }}
+                  className={classNames}
                 >
                   {dayNum}
                 </button>
@@ -364,12 +465,13 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({ value, onChange,
                 aria-label="Hour"
                 className="form-input font-mono"
                 style={{ height: '38px', padding: '0 10px', fontSize: '0.8125rem', flex: 1, cursor: 'pointer' }}
-                value={selectedHour12}
+                value={draft.hour12}
                 onChange={(e) => {
                   const h = parseInt(e.target.value, 10);
-                  setSelectedHour12(h);
-                  if (selectedDay) {
-                    const target = buildTargetDate(selectedDay, h, selectedMinute, selectedAmpm);
+                  const updatedDraft = { ...draft, hour12: h };
+                  setDraft(updatedDraft);
+                  if (updatedDraft.day) {
+                    const target = buildTargetDate(updatedDraft.year, updatedDraft.month, updatedDraft.day, h, updatedDraft.minute, updatedDraft.ampm);
                     setValidationError(target <= new Date() ? 'Expiration date & time must be in the future.' : null);
                   }
                 }}
@@ -391,12 +493,13 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({ value, onChange,
                 aria-label="Minute"
                 className="form-input font-mono"
                 style={{ height: '38px', padding: '0 10px', fontSize: '0.8125rem', flex: 1, cursor: 'pointer' }}
-                value={selectedMinute}
+                value={draft.minute}
                 onChange={(e) => {
                   const m = parseInt(e.target.value, 10);
-                  setSelectedMinute(m);
-                  if (selectedDay) {
-                    const target = buildTargetDate(selectedDay, selectedHour12, m, selectedAmpm);
+                  const updatedDraft = { ...draft, minute: m };
+                  setDraft(updatedDraft);
+                  if (updatedDraft.day) {
+                    const target = buildTargetDate(updatedDraft.year, updatedDraft.month, updatedDraft.day, updatedDraft.hour12, m, updatedDraft.ampm);
                     setValidationError(target <= new Date() ? 'Expiration date & time must be in the future.' : null);
                   }
                 }}
@@ -415,22 +518,23 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({ value, onChange,
                     key={ap}
                     type="button"
                     onClick={() => {
-                      setSelectedAmpm(ap);
-                      if (selectedDay) {
-                        const target = buildTargetDate(selectedDay, selectedHour12, selectedMinute, ap);
+                      const updatedDraft = { ...draft, ampm: ap };
+                      setDraft(updatedDraft);
+                      if (updatedDraft.day) {
+                        const target = buildTargetDate(updatedDraft.year, updatedDraft.month, updatedDraft.day, updatedDraft.hour12, updatedDraft.minute, ap);
                         setValidationError(target <= new Date() ? 'Expiration date & time must be in the future.' : null);
                       }
                     }}
                     className="font-mono"
                     style={{
                       fontSize: '0.7rem',
-                      fontWeight: selectedAmpm === ap ? 700 : 500,
-                      background: selectedAmpm === ap ? 'var(--card-bg)' : 'transparent',
-                      color: selectedAmpm === ap ? 'var(--fg)' : 'var(--muted-fg)',
-                      border: selectedAmpm === ap ? '1px solid var(--border)' : '1px solid transparent',
+                      fontWeight: draft.ampm === ap ? 700 : 500,
+                      background: draft.ampm === ap ? 'var(--card-bg)' : 'transparent',
+                      color: draft.ampm === ap ? 'var(--fg)' : 'var(--muted-fg)',
+                      border: draft.ampm === ap ? '1px solid var(--border)' : '1px solid transparent',
                       padding: '0 10px',
                       cursor: 'pointer',
-                      transition: 'all 120ms ease',
+                      transition: 'background-color 120ms ease, color 120ms ease',
                     }}
                   >
                     {ap}

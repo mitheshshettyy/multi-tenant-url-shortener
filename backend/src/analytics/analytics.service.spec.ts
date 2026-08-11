@@ -4,21 +4,21 @@ import type { TenantPrismaService } from '../tenant/tenant-prisma.service';
 describe('AnalyticsService', () => {
   let service: AnalyticsService;
   let clickDelegate: {
-    count: jest.Mock<Promise<number>, [Record<string, unknown>]>;
-    findMany: jest.Mock<Promise<any[]>, [Record<string, unknown>]>;
+    count: jest.MockedFunction<() => Promise<number>>;
+    findMany: jest.MockedFunction<() => Promise<{ clickedAt?: Date; referrer?: string | null; userAgent?: string | null }[]>>;
   };
   let urlDelegate: {
-    count: jest.Mock<Promise<number>, [Record<string, unknown>]>;
+    count: jest.MockedFunction<() => Promise<number>>;
   };
   let tenantPrisma: jest.Mocked<TenantPrismaService>;
 
   beforeEach(() => {
     clickDelegate = {
-      count: jest.fn(),
-      findMany: jest.fn(),
+      count: jest.fn() as jest.MockedFunction<() => Promise<number>>,
+      findMany: jest.fn() as jest.MockedFunction<() => Promise<{ clickedAt?: Date; referrer?: string | null; userAgent?: string | null }[]>>,
     };
     urlDelegate = {
-      count: jest.fn(),
+      count: jest.fn() as jest.MockedFunction<() => Promise<number>>,
     };
     tenantPrisma = {
       client: {

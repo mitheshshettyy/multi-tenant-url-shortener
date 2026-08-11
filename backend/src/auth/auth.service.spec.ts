@@ -8,6 +8,7 @@ import type { ConfigService } from '@nestjs/config';
 import type { JwtService } from '@nestjs/jwt';
 import type { PasswordService } from './password.service';
 import type { UsersService } from '../users/users.service';
+import type { PrismaService } from '../database/prisma.service';
 import type { User } from '@prisma/client';
 import { Role } from '@prisma/client';
 
@@ -17,7 +18,16 @@ describe('AuthService', () => {
   let passwordService: jest.Mocked<PasswordService>;
   let jwtService: jest.Mocked<JwtService>;
   let configService: jest.Mocked<ConfigService>;
-  let prismaService: any;
+  let prismaService: {
+    tenant: {
+      findUnique: jest.MockedFunction<() => Promise<unknown>>;
+      create: jest.MockedFunction<() => Promise<unknown>>;
+    };
+    user: {
+      create: jest.MockedFunction<() => Promise<unknown>>;
+    };
+    $transaction: jest.MockedFunction<(cb: (tx: unknown) => unknown) => Promise<unknown>>;
+  };
 
   const authConfig = {
     accessTokenSecret: 'access-secret',
@@ -60,13 +70,13 @@ describe('AuthService', () => {
 
     prismaService = {
       tenant: {
-        findUnique: jest.fn(),
-        create: jest.fn(),
+        findUnique: jest.fn() as jest.MockedFunction<() => Promise<unknown>>,
+        create: jest.fn() as jest.MockedFunction<() => Promise<unknown>>,
       },
       user: {
-        create: jest.fn(),
+        create: jest.fn() as jest.MockedFunction<() => Promise<unknown>>,
       },
-      $transaction: jest.fn((callback) => callback(prismaService)),
+      $transaction: jest.fn((callback: (tx: unknown) => unknown) => callback(prismaService)) as jest.MockedFunction<(cb: (tx: unknown) => unknown) => Promise<unknown>>,
     };
 
     authService = new AuthService(
@@ -74,7 +84,7 @@ describe('AuthService', () => {
       passwordService,
       jwtService,
       configService,
-      prismaService,
+      prismaService as unknown as PrismaService,
     );
   });
 
@@ -216,7 +226,7 @@ describe('AuthService', () => {
         refreshTokenHash: null,
       });
       jwtService.signAsync.mockResolvedValueOnce('access.jwt').mockResolvedValueOnce('refresh.jwt');
-      usersService.updateRefreshTokenHash.mockResolvedValue({} as any);
+      usersService.updateRefreshTokenHash.mockResolvedValue(user);
 
       const result = await authService.register(registerDto);
 
