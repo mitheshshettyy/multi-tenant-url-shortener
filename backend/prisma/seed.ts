@@ -5,7 +5,7 @@ const prisma = new PrismaClient();
 
 const SALT_ROUNDS = 12;
 
-// ── Existing tenant seed (unchanged) ──────────────────────────────────────
+// ── Tenant seed ──────────────────────────────────────────────────────────
 const SEED_TENANT_NAME = 'Acme Inc';
 const SEED_TENANT_SLUG = 'acme';
 const SEED_USER_EMAIL = 'dev@example.com';
@@ -20,7 +20,6 @@ const SUPER_ADMIN_EMAIL = 'superadmin@platform.com';
 const SUPER_ADMIN_PASSWORD = 'superadmin123';
 
 async function main(): Promise<void> {
-  // 1. Existing tenant + user (unchanged)
   const tenant = await prisma.tenant.upsert({
     where: { slug: SEED_TENANT_SLUG },
     update: {},

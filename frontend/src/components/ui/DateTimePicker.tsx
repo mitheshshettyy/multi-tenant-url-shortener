@@ -25,14 +25,12 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({ value, onChange,
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Parsed external date
   const parsedValue = useMemo(() => {
     if (!value) return null;
     const d = new Date(value);
     return isNaN(d.getTime()) ? null : d;
   }, [value]);
 
-  // View state (calendar navigation)
   const [viewDate, setViewDate] = useState<{ year: number; month: number }>(() => {
     if (parsedValue) {
       return { year: parsedValue.getFullYear(), month: parsedValue.getMonth() };
@@ -41,7 +39,7 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({ value, onChange,
     return { year: now.getFullYear(), month: now.getMonth() };
   });
 
-  // Draft state (uncommitted user selection in popover)
+  // Maintains an uncommitted draft selection until the user confirms or clears.
   const [draft, setDraft] = useState<DraftState>(() => {
     if (parsedValue) {
       const h = parsedValue.getHours();
@@ -96,7 +94,6 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({ value, onChange,
     setValidationError(null);
   }, [value, parsedValue, isOpen]);
 
-  // Close popover when clicking outside
   useEffect(() => {
     if (!isOpen) return;
     const handleClickOutside = (e: MouseEvent) => {
@@ -108,7 +105,6 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({ value, onChange,
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isOpen]);
 
-  // Close popover on Escape key
   useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -120,20 +116,17 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({ value, onChange,
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isOpen]);
 
-  // Convert 12h + AM/PM to 24h
   const get24Hour = (h12: number, ampm: 'AM' | 'PM') => {
     if (ampm === 'PM' && h12 < 12) return h12 + 12;
     if (ampm === 'AM' && h12 === 12) return 0;
     return h12;
   };
 
-  // Build target Date object from draft components
   const buildTargetDate = useCallback((y: number, m: number, d: number, h12: number, min: number, ampm: 'AM' | 'PM') => {
     const h24 = get24Hour(h12, ampm);
     return new Date(y, m, d, h24, min, 0, 0);
   }, []);
 
-  // Month Navigation
   const prevMonth = () => {
     setViewDate((prev) =>
       prev.month === 0 ? { year: prev.year - 1, month: 11 } : { ...prev, month: prev.month - 1 }
@@ -146,7 +139,6 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({ value, onChange,
     );
   };
 
-  // Year options for dropdown (current year to current year + 10)
   const yearOptions = useMemo(() => {
     const currentYear = new Date().getFullYear();
     const years: number[] = [];
@@ -156,7 +148,6 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({ value, onChange,
     return years;
   }, []);
 
-  // Memoized Grid Calculation
   const gridData = useMemo(() => {
     const { year, month } = viewDate;
     const firstDayOfWeek = new Date(year, month, 1).getDay();
@@ -188,7 +179,6 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({ value, onChange,
     return { firstDayOfWeek, days };
   }, [viewDate, draft.day, draft.year, draft.month]);
 
-  // Calendar Day Click
   const handleSelectDay = (dayNum: number) => {
     const newDraft: DraftState = {
       ...draft,
@@ -206,7 +196,6 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({ value, onChange,
     }
   };
 
-  // Confirm and Apply Selection
   const handleApply = () => {
     if (!draft.day) {
       setValidationError('Please select a date from the calendar.');

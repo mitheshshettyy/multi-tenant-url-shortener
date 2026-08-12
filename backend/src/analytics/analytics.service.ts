@@ -50,7 +50,6 @@ export class AnalyticsService {
       },
     });
 
-    // Group clicks by YYYY-MM-DD
     const dailyCounts: Record<string, number> = {};
     for (let i = 0; i <= days; i++) {
       const d = new Date();

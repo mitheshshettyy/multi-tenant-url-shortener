@@ -42,7 +42,6 @@ export async function generateUniqueShortCode<T>(
       if (!isCollisionError(error)) {
         throw error;
       }
-      // A genuine collision — the loop retries with a fresh candidate.
     }
   }
 

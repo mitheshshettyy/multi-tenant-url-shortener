@@ -18,6 +18,8 @@ api.interceptors.request.use(
   (error) => Promise.reject(error),
 );
 
+// Queue requests while an access token refresh is in flight to prevent multiple
+// simultaneous refresh API calls when multiple requests receive 401 concurrently.
 let isRefreshing = false;
 let failedQueue: Array<{
   resolve: (value: unknown) => void;
