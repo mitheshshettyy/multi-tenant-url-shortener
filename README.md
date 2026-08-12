@@ -44,29 +44,60 @@ This is an npm workspaces monorepo. One install at the root covers both
 
 ## Environment Setup
 
-Ensure Docker Desktop or another Docker daemon is running, then start
-Postgres and Redis:
+> **Start order matters.** Docker must be running and the containers must be
+> healthy before starting the backend. If the backend starts without Postgres
+> or Redis, it exits immediately and all API calls will fail.
 
 ```bash
-docker compose up -d
+docker compose up -d   # start Postgres + Redis first
+docker compose ps      # wait until both show (healthy)
 ```
 
-Then set up environment files:
+Then copy the environment files:
 
 ```bash
 cp backend/.env.example backend/.env
 cp frontend/.env.example frontend/.env
 ```
 
-The defaults in `backend/.env.example` already match `docker-compose.yml`,
-so no edits are needed for local development.
-
-Apply the Prisma schema and optionally seed the development user:
+Apply the Prisma schema and seed the development accounts:
 
 ```bash
-npm run db:push
-npm run seed
+npm run db:push   # creates/updates tables and enums in Postgres
+npm run seed      # creates the tenant and user accounts listed below
 ```
+
+> **Re-run `db:push` after schema changes.** When you pull commits that update
+> `backend/prisma/schema.prisma` (new models, new enum values, etc.), run
+> `npm run db:push` again to sync the database before starting the backend.
+> Skipping this causes runtime errors such as
+> `invalid input value for enum "Role"` when the seed or the API tries to
+> insert a value the database does not yet recognise.
+
+### Seed accounts
+
+| Role | Email | Password |
+| ----------- | ----------------------------- | ---------------- |
+| TENANT_ADMIN | `dev@example.com` | `devpassword123` |
+| SUPER_ADMIN | `superadmin@platform.com` | `superadmin123` |
+
+### Environment variables
+
+#### `frontend/.env`
+
+| Variable | Default | Purpose |
+| -------------------------------- | ------------------------- | ---------------------------------------------------------------- |
+| `VITE_API_BASE_URL` | `/api/v1` | Prefix for all API calls. The Vite proxy forwards to port 3000. |
+| `VITE_SHORT_LINK_BASE_URL` | `http://localhost:3000` | Base URL prepended to short codes in the UI (e.g. the copy button). Must point to the NestJS backend, **not** the Vite dev server (port 5173). In production set this to your public domain. |
+
+#### `backend/.env`
+
+See `backend/.env.example` for a full annotated list. The notable variable
+for multi-machine setups:
+
+| Variable | Notes |
+| -------------- | ---------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL` | `docker-compose.yml` maps host **5433** → container 5432. Use port 5433 when connecting to Docker Postgres. If you have a native Postgres on port 5432, use port 5432. |
 
 ## Local Infrastructure
 
@@ -92,6 +123,11 @@ database that contains data you need to keep.
 npm run dev:backend   # NestJS API at http://127.0.0.1:3000
 npm run dev:frontend  # Vite dev server at http://127.0.0.1:5173
 ```
+
+The frontend at port 5173 proxies `/api/*` to the backend at port 3000.
+Short-link redirects (`GET /:shortCode`) are handled by the backend on
+port 3000 — not the Vite dev server. Clicking a copied short URL in the
+browser must target port 3000, which `VITE_SHORT_LINK_BASE_URL` ensures.
 
 ## Useful Scripts
 

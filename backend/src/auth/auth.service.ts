@@ -69,13 +69,11 @@ export class AuthService {
     email: string;
     password: string;
   }): Promise<AuthTokens> {
-    // 1. Check if email is already in use
     const existingUser = await this.usersService.findByEmail(dto.email);
     if (existingUser) {
       throw new ConflictException('Email already in use');
     }
 
-    // 2. Check if tenant slug is already in use
     const existingTenant = await this.prisma.tenant.findUnique({
       where: { slug: dto.tenantSlug },
     });
@@ -83,10 +81,8 @@ export class AuthService {
       throw new ConflictException('Tenant slug already in use');
     }
 
-    // 3. Hash the password
     const passwordHash = await this.passwordService.hash(dto.password);
 
-    // 4. Create tenant and user in a transaction
     const user = await this.prisma.$transaction(async (tx) => {
       const tenant = await tx.tenant.create({
         data: {
@@ -105,7 +101,6 @@ export class AuthService {
       });
     });
 
-    // 5. Issue tokens
     return this.issueTokens(user);
   }
 

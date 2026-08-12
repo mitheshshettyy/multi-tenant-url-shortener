@@ -35,7 +35,6 @@ export const LinksPage: React.FC = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [originalUrl, setOriginalUrl] = useState('');
   const [customCode, setCustomCode] = useState('');
@@ -44,12 +43,10 @@ export const LinksPage: React.FC = () => {
   const [modalError, setModalError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Delete confirmation state
   const [deleteTarget, setDeleteTarget] = useState<Url | null>(null);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Copy indicator
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
   const fetchUrls = useCallback(async () => {

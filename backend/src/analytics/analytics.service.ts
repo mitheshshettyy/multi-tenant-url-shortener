@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { type Prisma } from '@prisma/client';
 import { TenantPrismaService } from '../tenant/tenant-prisma.service';
 
 @Injectable()
@@ -6,7 +7,7 @@ export class AnalyticsService {
   constructor(private readonly tenantPrisma: TenantPrismaService) {}
 
   async getOverview(urlId?: string) {
-    const where: Record<string, any> = {};
+    const where: Prisma.ClickWhereInput = {};
     if (urlId) {
       where.urlId = urlId;
     }
@@ -30,7 +31,7 @@ export class AnalyticsService {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
 
-    const where: Record<string, any> = {
+    const where: Prisma.ClickWhereInput = {
       clickedAt: {
         gte: startDate,
       },
@@ -49,7 +50,6 @@ export class AnalyticsService {
       },
     });
 
-    // Group clicks by YYYY-MM-DD
     const dailyCounts: Record<string, number> = {};
     for (let i = 0; i <= days; i++) {
       const d = new Date();
@@ -74,7 +74,7 @@ export class AnalyticsService {
   }
 
   async getReferrers(urlId?: string, limit = 10) {
-    const where: Record<string, any> = {};
+    const where: Prisma.ClickWhereInput = {};
     if (urlId) {
       where.urlId = urlId;
     }
@@ -102,7 +102,7 @@ export class AnalyticsService {
   }
 
   async getUserAgents(urlId?: string, limit = 10) {
-    const where: Record<string, any> = {};
+    const where: Prisma.ClickWhereInput = {};
     if (urlId) {
       where.urlId = urlId;
     }

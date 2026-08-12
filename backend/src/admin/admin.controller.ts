@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  Patch,
   Post,
   Query,
 } from '@nestjs/common';
@@ -107,6 +108,19 @@ export class AdminController {
       tenantId,
       search,
     });
+  }
+
+  /**
+   * Toggle a link's active status across any tenant.
+   * Super Admin only — enforced by the @Roles(Role.SUPER_ADMIN) on the class.
+   * Automatically invalidates the Redis redirect cache for the affected short code.
+   */
+  @Patch('links/:id')
+  toggleLinkStatus(
+    @Param('id') id: string,
+    @Body() body: { isActive: boolean },
+  ) {
+    return this.adminService.toggleLinkStatus(id, body.isActive);
   }
 
   // ── Platform analytics ─────────────────────────────────────────────────

@@ -83,7 +83,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await api.post('/auth/logout');
     } catch {
-      // ignore
+      // Best-effort server notification; local tokens are cleared unconditionally below.
     } finally {
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');

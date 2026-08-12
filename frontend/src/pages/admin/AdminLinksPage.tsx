@@ -4,7 +4,7 @@ import { PageHeader } from '../../components/ui/PageHeader';
 import { Badge } from '../../components/ui/Badge';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { Spinner } from '../../components/ui/Spinner';
-import { Search, ExternalLink } from 'lucide-react';
+import { Search, ExternalLink, ToggleLeft, ToggleRight } from 'lucide-react';
 
 interface AdminLink {
   id: string;
@@ -30,6 +30,7 @@ export const AdminLinksPage: React.FC = () => {
   const [tenantFilter, setTenantFilter] = useState('');
   const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
 
   useEffect(() => {
     api.get('/admin/tenants', { params: { limit: 100 } }).then(({ data }) => {
@@ -54,6 +55,20 @@ export const AdminLinksPage: React.FC = () => {
   }, [page, search, tenantFilter]);
 
   useEffect(() => { fetchLinks(); }, [fetchLinks]);
+
+  const handleToggleStatus = async (link: AdminLink) => {
+    setTogglingId(link.id);
+    try {
+      await api.patch(`/admin/links/${link.id}`, { isActive: !link.isActive });
+      setLinks((prev) =>
+        prev.map((l) => (l.id === link.id ? { ...l, isActive: !link.isActive } : l)),
+      );
+    } catch (err) {
+      console.error('Failed to toggle link status', err);
+    } finally {
+      setTogglingId(null);
+    }
+  };
 
   const getStatusBadge = (link: AdminLink) => {
     const expired = link.expiresAt && new Date(link.expiresAt) <= new Date();
@@ -130,55 +145,109 @@ export const AdminLinksPage: React.FC = () => {
                 <th scope="col">Clicks</th>
                 <th scope="col">Status</th>
                 <th scope="col">Created</th>
+                <th scope="col">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {links.map((l) => (
-                <tr key={l.id}>
-                  <td>
-                    <div style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--fg)', marginBottom: '2px' }}>{l.title || 'Untitled'}</div>
-                    <span className="font-mono" style={{ color: 'var(--accent)', fontSize: '0.75rem' }}>/{l.shortCode}</span>
-                  </td>
-                  <td style={{ maxWidth: '220px' }}>
-                    <a
-                      href={l.originalUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{
-                        color: 'var(--muted-fg)',
-                        textDecoration: 'none',
-                        fontSize: '0.8rem',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                        maxWidth: '100%',
-                      }}
-                    >
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{l.originalUrl}</span>
-                      <ExternalLink size={10} strokeWidth={1.5} style={{ flexShrink: 0 }} aria-hidden="true" />
-                    </a>
-                  </td>
-                  <td>
-                    <div style={{ fontWeight: 500, fontSize: '0.875rem', color: 'var(--fg)' }}>{l.tenant.name}</div>
-                    <div className="font-mono" style={{ fontSize: '0.65rem', color: 'var(--muted-fg)' }}>{l.tenant.slug}</div>
-                  </td>
-                  <td>
-                    <span style={{ fontSize: '0.8rem', color: 'var(--muted-fg)' }}>{l.createdBy.email}</span>
-                  </td>
-                  <td>
-                    <span className="font-mono" style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--fg)' }}>{l.clickCount.toLocaleString()}</span>
-                  </td>
-                  <td>{getStatusBadge(l)}</td>
-                  <td>
-                    <span className="font-mono" style={{ fontSize: '0.75rem', color: 'var(--muted-fg)' }}>
-                      {new Date(l.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
-                    </span>
-                  </td>
-                </tr>
-              ))}
+              {links.map((l) => {
+                const isExpired = !!(l.expiresAt && new Date(l.expiresAt) <= new Date());
+                const isToggling = togglingId === l.id;
+
+                return (
+                  <tr key={l.id}>
+                    <td>
+                      <div style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--fg)', marginBottom: '2px' }}>{l.title || 'Untitled'}</div>
+                      <span className="font-mono" style={{ color: 'var(--accent)', fontSize: '0.75rem' }}>/{l.shortCode}</span>
+                    </td>
+                    <td style={{ maxWidth: '220px' }}>
+                      <a
+                        href={l.originalUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          color: 'var(--muted-fg)',
+                          textDecoration: 'none',
+                          fontSize: '0.8rem',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          maxWidth: '100%',
+                        }}
+                      >
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{l.originalUrl}</span>
+                        <ExternalLink size={10} strokeWidth={1.5} style={{ flexShrink: 0 }} aria-hidden="true" />
+                      </a>
+                    </td>
+                    <td>
+                      <div style={{ fontWeight: 500, fontSize: '0.875rem', color: 'var(--fg)' }}>{l.tenant.name}</div>
+                      <div className="font-mono" style={{ fontSize: '0.65rem', color: 'var(--muted-fg)' }}>{l.tenant.slug}</div>
+                    </td>
+                    <td>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--muted-fg)' }}>{l.createdBy.email}</span>
+                    </td>
+                    <td>
+                      <span className="font-mono" style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--fg)' }}>{l.clickCount.toLocaleString()}</span>
+                    </td>
+                    <td>{getStatusBadge(l)}</td>
+                    <td>
+                      <span className="font-mono" style={{ fontSize: '0.75rem', color: 'var(--muted-fg)' }}>
+                        {new Date(l.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      </span>
+                    </td>
+                    <td>
+                      {/* Only show toggle when link is not expired */}
+                      {isExpired ? (
+                        <span className="font-mono" style={{ fontSize: '0.65rem', color: '#404040', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                          Expired
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleToggleStatus(l)}
+                          disabled={isToggling}
+                          aria-label={`${l.isActive ? 'Deactivate' : 'Activate'} link ${l.shortCode}`}
+                          title={l.isActive ? 'Deactivate this link' : 'Activate this link'}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            background: 'transparent',
+                            border: '1px solid var(--border)',
+                            borderRadius: '0',
+                            padding: '5px 10px',
+                            cursor: isToggling ? 'not-allowed' : 'pointer',
+                            color: isToggling ? '#404040' : l.isActive ? 'var(--muted-fg)' : '#4ade80',
+                            fontFamily: 'var(--font-mono)',
+                            fontSize: '0.65rem',
+                            letterSpacing: '0.06em',
+                            textTransform: 'uppercase',
+                            transition: 'border-color 150ms, color 150ms',
+                            opacity: isToggling ? 0.5 : 1,
+                          }}
+                          onMouseEnter={(e) => {
+                            if (!isToggling) e.currentTarget.style.borderColor = l.isActive ? 'var(--accent)' : '#4ade80';
+                          }}
+                          onMouseLeave={(e) => {
+                            if (!isToggling) e.currentTarget.style.borderColor = 'var(--border)';
+                          }}
+                        >
+                          {isToggling ? (
+                            <Spinner size={12} />
+                          ) : l.isActive ? (
+                            <ToggleRight size={13} strokeWidth={1.5} />
+                          ) : (
+                            <ToggleLeft size={13} strokeWidth={1.5} />
+                          )}
+                          {l.isActive ? 'Deactivate' : 'Activate'}
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}
