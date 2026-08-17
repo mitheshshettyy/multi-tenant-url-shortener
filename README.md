@@ -168,7 +168,3 @@ Setup and scripts stop here. System design documentation lives in
 - [Tenant Isolation](./docs/architecture/tenant-isolation.md)
 - [Design Decisions](./docs/architecture/decisions.md)
 - [Future Improvements](./docs/future-improvements.md)
-
-## License
-
-Unlicensed portfolio project.
