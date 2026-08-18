@@ -47,7 +47,7 @@ model Url {
   id          String    @id @default(uuid())
   tenantId    String
   createdById String
-  shortCode   String    @unique
+  shortCode   String    
   originalUrl String
   title       String?
   isActive    Boolean   @default(true)
