@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Multi-Tenant URL Shortener &amp; Analytics Platform — Project Report</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Code+Pro:wght@400;500&display=swap');
+
+    /* ===== PRINT PAGE SETUP ===== */
+    @page {
+      size: A4;
+      margin: 14mm 15mm 14mm 15mm;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      font-family: 'Inter', sans-serif;
+      font-size: 9.2pt;
+      line-height: 1.45;
+      color: #1a1a2e;
+      background: #f4f4f8;
+    }
+
+    /* ===== SCREEN WRAPPER (preview only) ===== */
+    .report-wrapper {
+      max-width: 210mm;
+      margin: 0 auto;
+      background: #ffffff;
+      padding: 14mm 15mm;
+      box-shadow: 0 4px 32px rgba(0,0,0,0.12);
+    }
+
+    /* ===== TYPOGRAPHY ===== */
+    .doc-header {
+      border-bottom: 2.5px solid #16213e;
+      padding-bottom: 8px;
+      margin-bottom: 10px;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .doc-header .institution {
+      font-size: 7.5pt;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #e94560;
+      margin-bottom: 3px;
+    }
+    .doc-header h1 {
+      font-size: 14pt;
+      font-weight: 700;
+      color: #16213e;
+      line-height: 1.2;
+      letter-spacing: -0.02em;
+    }
+    .doc-header .subtitle {
+      font-size: 8pt;
+      color: #555;
+      margin-top: 3px;
+    }
+    .doc-header .meta-row {
+      display: flex;
+      gap: 20px;
+      margin-top: 5px;
+      font-size: 7.5pt;
+      color: #666;
+      flex-wrap: wrap;
+    }
+    .doc-header .meta-row span strong {
+      color: #16213e;
+      font-weight: 600;
+    }
+
+    .section-title {
+      font-size: 8pt;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #e94560;
+      border-left: 3px solid #e94560;
+      padding-left: 6px;
+      margin-top: 14px;
+      margin-bottom: 6px;
+      break-after: avoid;
+      page-break-after: avoid;
+    }
+
+    p {
+      font-size: 8.5pt;
+      color: #2c2c3e;
+      line-height: 1.5;
+      margin-bottom: 5px;
+    }
+
+    ul {
+      padding-left: 14px;
+      margin-bottom: 5px;
+    }
+    ul li {
+      font-size: 8.2pt;
+      line-height: 1.55;
+      color: #2c2c3e;
+      margin-bottom: 2px;
+    }
+    ul li strong { color: #16213e; }
+
+    code {
+      font-family: 'Source Code Pro', monospace;
+      font-size: 7.5pt;
+      background: #eef0fa;
+      padding: 1px 4px;
+      border-radius: 3px;
+      color: #16213e;
+    }
+
+    /* ===== TWO-COLUMN LAYOUT ===== */
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    /* ===== CARDS ===== */
+    .card {
+      background: #f8f9ff;
+      border: 1px solid #dde0f0;
+      border-radius: 5px;
+      padding: 7px 9px;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .card .card-title {
+      font-size: 7.5pt;
+      font-weight: 700;
+      color: #16213e;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 4px;
+      border-bottom: 1px solid #dde0f0;
+      padding-bottom: 3px;
+    }
+
+    /* ===== TABLES ===== */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 8pt;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    th {
+      background: #16213e;
+      color: #ffffff;
+      padding: 4px 8px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 7.5pt;
+      letter-spacing: 0.05em;
+    }
+    td {
+      padding: 3.5px 8px;
+      border-bottom: 1px solid #eaeaf0;
+      color: #2c2c3e;
+      vertical-align: top;
+    }
+    tr:nth-child(even) td { background: #f5f6fb; }
+
+    /* ===== DIAGRAM WRAPPERS ===== */
+    .diagram-wrap {
+      border: 1px solid #dde0f0;
+      border-radius: 5px;
+      overflow: visible;
+      break-inside: avoid;
+      page-break-inside: avoid;
+      margin-bottom: 8px;
+    }
+    .diagram-caption {
+      background: #16213e;
+      color: #fff;
+      font-size: 7pt;
+      font-weight: 600;
+      padding: 4px 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .diagram-body {
+      padding: 8px 10px;
+      background: #f8f9ff;
+    }
+
+    /* ===== HORIZONTAL FLOW ===== */
+    .flow {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      flex-wrap: wrap;
+      row-gap: 4px;
+    }
+    .flow-box {
+      background: #16213e;
+      color: #fff;
+      font-size: 7pt;
+      font-weight: 600;
+      padding: 5px 7px;
+      border-radius: 4px;
+      text-align: center;
+      min-width: 60px;
+      white-space: nowrap;
+      line-height: 1.3;
+    }
+    .flow-box.accent  { background: #e94560; }
+    .flow-box.teal    { background: #0f7b6c; }
+    .flow-box.navy    { background: #0a3d62; }
+    .flow-box.light   { background: #384370; }
+    .flow-arrow {
+      font-size: 11pt;
+      color: #aaa;
+      margin: 0 3px;
+      align-self: center;
+      flex-shrink: 0;
+    }
+
+    /* ===== VERTICAL FLOW ===== */
+    .vflow {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+    }
+    .vflow-box {
+      background: #16213e;
+      color: #fff;
+      font-size: 7pt;
+      font-weight: 600;
+      padding: 5px 10px;
+      border-radius: 4px;
+      text-align: center;
+      width: 100%;
+      line-height: 1.3;
+    }
+    .vflow-box.accent   { background: #e94560; }
+    .vflow-box.teal     { background: #0f7b6c; }
+    .vflow-box.light    { background: #384370; }
+    .vflow-box.navy     { background: #0a3d62; }
+    .vflow-box.green    { background: #1a7a4a; }
+    .vflow-arrow { font-size: 10pt; color: #aaa; margin: 2px 0; }
+    .vflow-decision {
+      background: #e9a020;
+      color: #fff;
+      font-size: 7pt;
+      font-weight: 600;
+      padding: 5px 10px;
+      border-radius: 4px;
+      text-align: center;
+      width: 100%;
+      line-height: 1.3;
+    }
+
+    /* ===== ARCHITECTURE GRID ===== */
+    .arch-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 5px;
+      align-items: start;
+    }
+    .arch-block {
+      border: 1px solid #c8cce0;
+      border-radius: 4px;
+      overflow: hidden;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .arch-block-header {
+      background: #16213e;
+      color: #fff;
+      font-size: 7pt;
+      font-weight: 700;
+      padding: 3px 7px;
+      letter-spacing: 0.05em;
+    }
+    .arch-block-header.red    { background: #e94560; }
+    .arch-block-header.teal   { background: #0f7b6c; }
+    .arch-block-header.navy   { background: #0a3d62; }
+    .arch-block-header.orange { background: #a04d00; }
+    .arch-block-body {
+      background: #f8f9ff;
+      padding: 5px 7px;
+      font-size: 7pt;
+      color: #2c2c3e;
+      line-height: 1.5;
+    }
+    .arch-block-body .item {
+      padding: 1.5px 0;
+      border-bottom: 1px dashed #dde0f0;
+    }
+    .arch-block-body .item:last-child { border: none; }
+
+    /* ===== HIGHLIGHT BOXES ===== */
+    .highlight-row { display: flex; gap: 6px; margin-bottom: 6px; }
+    .highlight-box {
+      flex: 1;
+      background: #f0f2ff;
+      border: 1px solid #c8cce0;
+      border-left: 3px solid #16213e;
+      border-radius: 3px;
+      padding: 6px 8px;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .highlight-box.red  { border-left-color: #e94560; background: #fff5f7; }
+    .highlight-box.teal { border-left-color: #0f7b6c; background: #f0faf8; }
+    .highlight-box .hb-title {
+      font-size: 7.5pt;
+      font-weight: 700;
+      color: #16213e;
+      margin-bottom: 3px;
+    }
+    .highlight-box.red  .hb-title { color: #e94560; }
+    .highlight-box.teal .hb-title { color: #0f7b6c; }
+    .highlight-box .hb-body {
+      font-size: 7.5pt;
+      color: #444;
+      line-height: 1.45;
+    }
+
+    /* ===== FOOTER ===== */
+    .page-footer {
+      border-top: 1px solid #dde0f0;
+      padding-top: 5px;
+      margin-top: 16px;
+      display: flex;
+      justify-content: space-between;
+      font-size: 7pt;
+      color: #999;
+    }
+
+    /* ===== SECTION BREAK HELPERS ===== */
+    .section-break {
+      break-before: page;
+      page-break-before: always;
+    }
+    .no-break {
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+
+    /* ===== PRINT OVERRIDES ===== */
+    @media print {
+      html, body {
+        background: white;
+        font-size: 9.2pt;
+      }
+      .report-wrapper {
+        max-width: 100%;
+        margin: 0;
+        padding: 0;
+        box-shadow: none;
+        background: white;
+      }
+      .section-title { break-after: avoid; page-break-after: avoid; }
+      .diagram-wrap  { break-inside: avoid; page-break-inside: avoid; }
+      .card          { break-inside: avoid; page-break-inside: avoid; }
+      .arch-block    { break-inside: avoid; page-break-inside: avoid; }
+      .highlight-box { break-inside: avoid; page-break-inside: avoid; }
+      table          { break-inside: avoid; page-break-inside: avoid; }
+      .no-break      { break-inside: avoid; page-break-inside: avoid; }
+      .section-break { break-before: page; page-break-before: always; }
+    }
+  </style>
+</head>
+<body>
+<div class="report-wrapper">
+
+  <!-- ===== HEADER ===== -->
+  <div class="doc-header">
+    <div class="institution">Technical Project Report &mdash; Software Engineering</div>
+    <h1>Multi-Tenant URL Shortener &amp; Analytics Platform</h1>
+    <div class="subtitle">A full-stack SaaS platform for tenant-isolated link management, click analytics, and role-based access control</div>
+    <div class="meta-row">
+      <span><strong>Stack:</strong> NestJS &middot; React &middot; PostgreSQL &middot; Redis &middot; Prisma &middot; TypeScript</span>
+      <span><strong>Architecture:</strong> REST API Monorepo (npm Workspaces)</span>
+      <span><strong>Deployment:</strong> Docker-Compose (Postgres 16 + Redis 7)</span>
+    </div>
+  </div>
+
+  <!-- ===== 1. ABSTRACT ===== -->
+  <div class="section-title">1. Abstract</div>
+  <p>This project delivers a production-grade multi-tenant URL shortening and analytics platform. Organisations (tenants) are provisioned as isolated namespaces on shared infrastructure, each managing their own short links, users, and click telemetry. The system exposes two distinct traffic paths: an <strong>authenticated management API</strong> (link CRUD, analytics dashboards, user management) protected by a three-stage NestJS guard chain, and a <strong>public redirect path</strong> optimised for minimal latency via a Redis cache-aside strategy. Role-based access control (RBAC) distinguishes three roles &mdash; MEMBER, TENANT_ADMIN, SUPER_ADMIN &mdash; enforced through a permission-based guard and a Prisma Client Extension that transparently injects tenant scoping into every database query. The React frontend presents tenant-scoped dashboards and a platform-wide admin console. The goal is correct data isolation, high redirect throughput, and an extensible architecture ready for horizontal scale.</p>
+
+  <!-- ===== 2. PROBLEM STATEMENT ===== -->
+  <div class="section-title">2. Problem Statement</div>
+  <p>SaaS teams building URL shorteners face two competing concerns: <em>shared infrastructure cost</em> (multiple tenants on one deployment) and <em>strict data isolation</em> (tenant A must never see tenant B's links or analytics). Existing open-source shorteners are single-tenant by design; retrofitting isolation via application-level filters is error-prone because a single missed <code>WHERE tenantId = ?</code> clause causes a cross-tenant data leak. Additionally, the redirect endpoint is the highest-traffic route and must not be gated behind authentication overhead, yet click attribution must still be correctly stamped per tenant.</p>
+
+  <!-- ===== 3. OBJECTIVES ===== -->
+  <div class="section-title">3. Objectives</div>
+  <div class="two-col">
+    <ul>
+      <li><strong>Tenant isolation by construction:</strong> make it structurally impossible to write an unscoped query against tenant-owned tables by centralising filtering in a Prisma Client Extension.</li>
+      <li><strong>Latency-optimised redirects:</strong> serve short-link redirections from Redis (cache-aside, TTL bounded by link expiry) so Postgres is touched only on first click or cache eviction.</li>
+      <li><strong>Granular RBAC:</strong> implement a permission-based guard covering URL creation, management, analytics, and platform-level admin operations.</li>
+    </ul>
+    <ul>
+      <li><strong>Secure token lifecycle:</strong> issue short-lived JWT access tokens (15 min) and 7-day rotating refresh tokens; hash refresh tokens with SHA-256 using <code>timingSafeEqual</code> comparison.</li>
+      <li><strong>Observability foundation:</strong> structured JSON logging (nestjs-pino), Redis-backed rate limiting, and a dedicated health endpoint to support future production deployment.</li>
+    </ul>
+  </div>
+
+  <!-- ===== 4. EXISTING VS PROPOSED ===== -->
+  <div class="section-title">4. Existing vs. Proposed System</div>
+  <div class="two-col">
+    <div class="card">
+      <div class="card-title">&#9888; Existing Limitations</div>
+      <ul>
+        <li>Single-tenant URL shorteners (e.g. YOURLS, Polr) with no isolation model</li>
+        <li>Application-level filtering &mdash; every developer must remember <code>WHERE tenantId</code> at every call site</li>
+        <li>Redirect and management traffic share the same pipeline, adding unnecessary auth overhead</li>
+        <li>No standardised RBAC; permissions hardcoded per endpoint or absent entirely</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-title">&#10004; Proposed System</div>
+      <ul>
+        <li>Tenant scoping enforced by Prisma Client Extension &mdash; impossible to write an unscoped query using <code>TenantPrismaService</code></li>
+        <li>Redirect path registered on raw Express before NestJS router; bypasses all guard overhead entirely</li>
+        <li>Declarative permissions (<code>@RequirePermissions()</code>) with a centralised permission-to-role mapping table</li>
+        <li>Rotating refresh tokens with hash stored per user row; logout invalidates the session immediately</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ===== 5. SYSTEM ARCHITECTURE ===== -->
+  <div class="section-title">5. System Architecture</div>
+  <div class="diagram-wrap">
+    <div class="diagram-caption">Fig. 1 &mdash; System Architecture: Two Distinct Traffic Paths on Shared Infrastructure</div>
+    <div class="diagram-body">
+      <div style="display:grid; grid-template-columns: 1fr 24px 1fr; gap:10px; align-items:start;">
+        <!-- LEFT: Public Redirect Path -->
+        <div>
+          <div style="font-size:7pt;font-weight:700;color:#0f7b6c;text-align:center;margin-bottom:6px;text-transform:uppercase;letter-spacing:.08em;">Public Redirect Path (Unauthenticated)</div>
+          <div class="vflow">
+            <div class="vflow-box teal">Visitor clicks short link &mdash; GET /:shortCode</div>
+            <div class="vflow-arrow">&#8595;</div>
+            <div class="vflow-box light">Express Handler (redirect.handler.ts)<br>Registered before NestJS router</div>
+            <div class="vflow-arrow">&#8595;</div>
+            <div class="vflow-decision">Redis Cache Lookup (redirect:&lt;code&gt;)</div>
+            <div class="vflow-arrow">&#8595;</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;width:100%;">
+              <div class="vflow-box green" style="font-size:6.5pt;">Cache HIT<br>302 Redirect</div>
+              <div class="vflow-box navy" style="font-size:6.5pt;">Cache MISS<br>Postgres lookup</div>
+            </div>
+            <div class="vflow-arrow">&#8595;</div>
+            <div class="vflow-box teal">Click logged async (non-blocking after 302)<br>tenantId stamped from URL row</div>
+          </div>
+        </div>
+        <!-- DIVIDER -->
+        <div style="display:flex;align-items:stretch;justify-content:center;">
+          <div style="width:1px;background:#dde0f0;height:100%;"></div>
+        </div>
+        <!-- RIGHT: Authenticated Management Path -->
+        <div>
+          <div style="font-size:7pt;font-weight:700;color:#e94560;text-align:center;margin-bottom:6px;text-transform:uppercase;letter-spacing:.08em;">Authenticated Management Path</div>
+          <div class="vflow">
+            <div class="vflow-box accent">Tenant Admin / Super Admin &mdash; React Dashboard (Vite, port 5173)</div>
+            <div class="vflow-arrow">&#8595;</div>
+            <div class="vflow-box light">NestJS Backend (port 3000) &mdash; Helmet &middot; CORS &middot; /api/v1</div>
+            <div class="vflow-arrow">&#8595;</div>
+            <div class="vflow-box navy">&#9312; JWT Auth Guard &mdash; Verifies token; attaches sub, tenantId, role</div>
+            <div class="vflow-arrow">&#8595;</div>
+            <div class="vflow-box navy">&#9313; RBAC Authorization Guard &mdash; @Roles / @RequirePermissions</div>
+            <div class="vflow-arrow">&#8595;</div>
+            <div class="vflow-box navy">&#9314; TenantContext Interceptor &mdash; AsyncLocalStorage</div>
+            <div class="vflow-arrow">&#8595;</div>
+            <div class="vflow-box accent">Controllers &rarr; Services (Auth, URL, Analytics, Admin, Tenant)</div>
+            <div class="vflow-arrow">&#8595;</div>
+            <div class="vflow-box light">TenantPrismaService (Prisma Client Extension)<br>Auto-injects tenantId into every query clause</div>
+            <div class="vflow-arrow">&#8595;</div>
+            <div class="vflow-box teal">PostgreSQL 16 &mdash; tenants &middot; users &middot; urls &middot; clicks</div>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:8px;background:#f0faf8;border:1px solid #b2dbd5;border-radius:4px;padding:5px 8px;font-size:7pt;color:#0f7b6c;">
+        <strong>Shared Data Layer:</strong> Redis 7 &mdash; redirect cache (TTL &le; 24h, bounded by link expiresAt), Redis-backed rate limiting (IP/tenant), refresh-token session cache. Cache invalidated unconditionally on URL update/delete. Redis is never the source of truth; Postgres is.
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 6. METHODOLOGY & TECHNICAL PIPELINE ===== -->
+  <div class="section-title section-break">6. Methodology &amp; Technical Pipeline</div>
+  <div class="diagram-wrap" style="margin-bottom:10px;">
+    <div class="diagram-caption">Fig. 2 &mdash; Technical Pipeline: URL Creation Flow and Redirect Flow</div>
+    <div class="diagram-body">
+
+      <!-- URL CREATION FLOW -->
+      <div style="font-size:7.5pt;font-weight:700;color:#e94560;margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em;">URL Creation Flow</div>
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:5px;align-items:center;margin-bottom:12px;">
+        <div class="vflow">
+          <div class="flow-box accent" style="width:100%;white-space:normal;font-size:6.8pt;">Client POST<br>/api/v1/urls</div>
+        </div>
+        <div style="text-align:center;font-size:14pt;color:#aaa;">&#8594;</div>
+        <div class="vflow">
+          <div class="flow-box" style="width:100%;white-space:normal;font-size:6.8pt;">JWT &amp; RBAC<br>Guards</div>
+        </div>
+        <div style="text-align:center;font-size:14pt;color:#aaa;">&#8594;</div>
+        <div class="vflow">
+          <div class="flow-box light" style="width:100%;white-space:normal;font-size:6.8pt;">UrlController<br>DTO Validation</div>
+        </div>
+        <div style="text-align:center;font-size:14pt;color:#aaa;">&#8594;</div>
+        <div class="vflow">
+          <div class="flow-box navy" style="width:100%;white-space:normal;font-size:6.8pt;">nanoid 7-char<br>alphanumeric</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:5px;align-items:center;margin-bottom:14px;">
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div style="text-align:center;font-size:14pt;color:#aaa;">&#8595;</div>
+        <div></div>
+        <div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:5px;align-items:center;margin-bottom:12px;">
+        <div class="vflow">
+          <div class="flow-box accent" style="width:100%;white-space:normal;font-size:6.8pt;">201 Created<br>+ URL object</div>
+        </div>
+        <div style="text-align:center;font-size:14pt;color:#aaa;">&#8592;</div>
+        <div class="vflow">
+          <div class="flow-box teal" style="width:100%;white-space:normal;font-size:6.8pt;">Postgres<br>urls table</div>
+        </div>
+        <div style="text-align:center;font-size:14pt;color:#aaa;">&#8592;</div>
+        <div class="vflow">
+          <div class="flow-box" style="width:100%;white-space:normal;font-size:6.8pt;">Attempt insert<br>catch collision</div>
+        </div>
+        <div></div>
+        <div></div>
+      </div>
+
+      <hr style="border:none;border-top:1px dashed #dde0f0;margin:10px 0;">
+
+      <!-- REDIRECT FLOW -->
+      <div style="font-size:7.5pt;font-weight:700;color:#0f7b6c;margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em;">Redirect Flow</div>
+      <div style="display:grid;grid-template-columns:repeat(8,1fr);gap:5px;align-items:center;">
+        <div class="vflow">
+          <div class="flow-box teal" style="width:100%;white-space:normal;font-size:6.8pt;">GET /:code<br>Visitor</div>
+        </div>
+        <div style="text-align:center;font-size:14pt;color:#aaa;">&#8594;</div>
+        <div class="vflow">
+          <div class="flow-box" style="width:100%;white-space:normal;font-size:6.8pt;">Redis GET<br>redirect:code</div>
+        </div>
+        <div style="text-align:center;font-size:14pt;color:#aaa;">&#8594;</div>
+        <div class="vflow">
+          <div class="flow-box light" style="width:100%;white-space:normal;font-size:6.8pt;">Cache miss?<br>&#8594; Postgres</div>
+        </div>
+        <div style="text-align:center;font-size:14pt;color:#aaa;">&#8594;</div>
+        <div class="vflow">
+          <div class="flow-box navy" style="width:100%;white-space:normal;font-size:6.8pt;">Check isActive<br>+ expiresAt</div>
+        </div>
+        <div style="text-align:center;font-size:14pt;color:#aaa;">&#8594;</div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(8,1fr);gap:5px;align-items:center;margin-top:5px;">
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div style="text-align:center;font-size:14pt;color:#aaa;">&#8595;</div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(8,1fr);gap:5px;align-items:center;margin-top:5px;">
+        <div class="vflow">
+          <div class="flow-box accent" style="width:100%;white-space:normal;font-size:6.8pt;">Async click<br>log to Postgres</div>
+        </div>
+        <div style="text-align:center;font-size:14pt;color:#aaa;">&#8592;</div>
+        <div class="vflow">
+          <div class="flow-box teal" style="width:100%;white-space:normal;font-size:6.8pt;">302 Redirect<br>to originalUrl</div>
+        </div>
+        <div style="text-align:center;font-size:14pt;color:#aaa;">&#8592;</div>
+        <div class="vflow">
+          <div class="flow-box" style="width:100%;white-space:normal;font-size:6.8pt;">Redis SET<br>bounded TTL</div>
+        </div>
+        <div></div>
+        <div></div>
+        <div></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ===== 7. BACKEND MODULE ARCHITECTURE & RBAC ===== -->
+  <div class="section-title">7. Backend Module Architecture &amp; RBAC Design</div>
+
+  <!-- Module Grid -->
+  <div class="no-break" style="margin-bottom:10px;">
+    <div class="arch-grid">
+      <div class="arch-block">
+        <div class="arch-block-header">AuthModule</div>
+        <div class="arch-block-body">
+          <div class="item">POST /auth/login</div>
+          <div class="item">POST /auth/refresh</div>
+          <div class="item">POST /auth/logout</div>
+          <div class="item">POST /auth/register</div>
+          <div class="item">bcrypt cost=12</div>
+          <div class="item">SHA-256 refresh hash</div>
+        </div>
+      </div>
+      <div class="arch-block">
+        <div class="arch-block-header red">UrlModule</div>
+        <div class="arch-block-body">
+          <div class="item">POST /urls</div>
+          <div class="item">GET /urls (paginated)</div>
+          <div class="item">GET /urls/:id</div>
+          <div class="item">PATCH /urls/:id</div>
+          <div class="item">DELETE /urls/:id (soft)</div>
+          <div class="item">nanoid short codes</div>
+        </div>
+      </div>
+      <div class="arch-block">
+        <div class="arch-block-header teal">Analytics</div>
+        <div class="arch-block-body">
+          <div class="item">GET /analytics/overview</div>
+          <div class="item">GET /analytics/clicks</div>
+          <div class="item">GET /analytics/referrers</div>
+          <div class="item">GET /analytics/user-agents</div>
+          <div class="item">Tenant-scoped queries</div>
+          <div class="item">Browser/OS parsing</div>
+        </div>
+      </div>
+      <div class="arch-block" style="grid-column:1/2;">
+        <div class="arch-block-header navy">RedirectModule</div>
+        <div class="arch-block-body">
+          <div class="item">Express handler (pre-Nest)</div>
+          <div class="item">GET /:shortCode</div>
+          <div class="item">RedirectCacheService</div>
+          <div class="item">RESERVED_PATHS bypass</div>
+        </div>
+      </div>
+      <div class="arch-block" style="grid-column:2/4;">
+        <div class="arch-block-header orange">AdminModule (SUPER_ADMIN only)</div>
+        <div class="arch-block-body">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px;">
+            <div class="item">GET /admin/stats</div>
+            <div class="item">GET /admin/tenants</div>
+            <div class="item">POST /admin/tenants</div>
+            <div class="item">GET /admin/users</div>
+            <div class="item">GET /admin/links</div>
+            <div class="item">PATCH /admin/links/:id</div>
+            <div class="item">GET /admin/analytics/top-links</div>
+            <div class="item">GET /admin/analytics/tenant-activity</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RBAC + Tenant Isolation -->
+  <div class="two-col" style="gap:10px;margin-bottom:10px;">
+    <div class="card">
+      <div class="card-title">RBAC Permission Matrix</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Permission</th>
+            <th style="text-align:center;">MEMBER</th>
+            <th style="text-align:center;">TENANT_ADMIN</th>
+            <th style="text-align:center;">SUPER_ADMIN</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>url:read</td><td style="text-align:center;">&#10003;</td><td style="text-align:center;">&#10003;</td><td style="text-align:center;">&#10003;</td></tr>
+          <tr><td>url:create</td><td style="text-align:center;">&#10003;</td><td style="text-align:center;">&#10003;</td><td style="text-align:center;">&#10003;</td></tr>
+          <tr><td>url:manage_own</td><td style="text-align:center;">&#10003;</td><td style="text-align:center;">&#10003;</td><td style="text-align:center;">&#10003;</td></tr>
+          <tr><td>url:manage (any)</td><td style="text-align:center;">&mdash;</td><td style="text-align:center;">&#10003;</td><td style="text-align:center;">&#10003;</td></tr>
+          <tr><td>analytics:read</td><td style="text-align:center;">&#10003;</td><td style="text-align:center;">&#10003;</td><td style="text-align:center;">&#10003;</td></tr>
+          <tr><td>tenant:manage</td><td style="text-align:center;">&mdash;</td><td style="text-align:center;">&#10003;</td><td style="text-align:center;">&#10003;</td></tr>
+          <tr><td>platform:read/manage</td><td style="text-align:center;">&mdash;</td><td style="text-align:center;">&mdash;</td><td style="text-align:center;">&#10003;</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="card">
+      <div class="card-title">Tenant Isolation Mechanism</div>
+      <ul>
+        <li><strong>TenantPrismaService</strong> wraps Prisma via Client Extension, merging <code>tenantId</code> into every <code>where</code> / <code>data</code> clause at query time.</li>
+        <li><strong>AsyncLocalStorage</strong> propagates <code>tenantId</code> from JWT through the entire async call chain &mdash; no argument threading required.</li>
+        <li><strong>Fail-closed:</strong> if no tenant context is active, the extension throws <code>ForbiddenException</code> rather than running an unscoped query.</li>
+        <li><strong>Exceptions:</strong> login + redirect use raw <code>PrismaService</code> (globally unique email / shortCode; no caller identity available).</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ===== 8. TECHNOLOGY STACK ===== -->
+  <div class="section-title">8. Technology Stack</div>
+  <div class="no-break" style="margin-bottom:10px;">
+    <table>
+      <thead>
+        <tr>
+          <th>Category</th>
+          <th>Technology / Version</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Language</td><td>TypeScript 5.7 (strict mode, monorepo)</td></tr>
+        <tr><td>Backend Framework</td><td>NestJS 11 (Express adapter)</td></tr>
+        <tr><td>Frontend</td><td>React 18.3 + Vite 6 + React Router 7</td></tr>
+        <tr><td>Database</td><td>PostgreSQL 16 (Docker-managed)</td></tr>
+        <tr><td>ORM</td><td>Prisma 6.3 (Client Extension for tenant scoping)</td></tr>
+        <tr><td>Cache / Rate Limit</td><td>Redis 7 (ioredis 5.4)</td></tr>
+        <tr><td>Authentication</td><td>JWT (@nestjs/jwt); bcrypt 6; SHA-256 refresh hash</td></tr>
+        <tr><td>Short Code Gen</td><td>nanoid 3 (custom alphanumeric alphabet, 7 chars)</td></tr>
+        <tr><td>HTTP Security</td><td>Helmet 8; CORS; ValidationPipe (class-validator)</td></tr>
+        <tr><td>Logging</td><td>nestjs-pino (structured JSON); pino-pretty (dev)</td></tr>
+        <tr><td>Testing</td><td>Jest 29 + ts-jest (url.service.spec, analytics.service.spec)</td></tr>
+        <tr><td>Infrastructure</td><td>Docker Compose; npm Workspaces monorepo</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ===== 9. COMPLETE END-TO-END WORKFLOW ===== -->
+  <div class="section-title">9. Complete End-to-End Workflow</div>
+  <div class="diagram-wrap" style="margin-bottom:10px;">
+    <div class="diagram-caption">Fig. 3 &mdash; Complete End-to-End Workflow</div>
+    <div class="diagram-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <!-- Setup & Management -->
+        <div>
+          <div style="font-size:7.5pt;font-weight:700;color:#e94560;text-align:center;margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em;">Setup &amp; Management</div>
+          <div class="vflow">
+            <div class="vflow-box accent" style="font-size:7pt;">Provision Tenant + Admin<br>POST /admin/tenants</div>
+            <div class="vflow-arrow">&#8595;</div>
+            <div class="vflow-box" style="font-size:7pt;">Admin logs in<br>POST /auth/login &rarr; JWT pair</div>
+            <div class="vflow-arrow">&#8595;</div>
+            <div class="vflow-box light" style="font-size:7pt;">React Dashboard (LinksPage)<br>Bearer token in every request</div>
+            <div class="vflow-arrow">&#8595;</div>
+            <div class="vflow-box accent" style="font-size:7pt;">Create Short URL<br>POST /api/v1/urls</div>
+            <div class="vflow-arrow">&#8595;</div>
+            <div class="vflow-box navy" style="font-size:7pt;">nanoid 7-char code<br>(attempt-then-catch collision)</div>
+            <div class="vflow-arrow">&#8595;</div>
+            <div class="vflow-box teal" style="font-size:7pt;">URL in Postgres (urls table)<br>tenantId, shortCode, originalUrl</div>
+            <div class="vflow-arrow">&#8595;</div>
+            <div class="vflow-box" style="font-size:7pt;">Token rotation<br>POST /auth/refresh</div>
+          </div>
+        </div>
+        <!-- Redirect & Analytics -->
+        <div>
+          <div style="font-size:7.5pt;font-weight:700;color:#0f7b6c;text-align:center;margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em;">Redirect &amp; Analytics</div>
+          <div class="vflow">
+            <div class="vflow-box teal" style="font-size:7pt;">Visitor clicks link<br>GET /:shortCode (port 3000)</div>
+            <div class="vflow-arrow">&#8595;</div>
+            <div class="vflow-decision" style="font-size:7pt;">Redis cache hit?</div>
+            <div class="vflow-arrow">&#8595;</div>
+            <div class="vflow-box green" style="font-size:7pt;">302 Redirect sent<br>(response complete)</div>
+            <div class="vflow-arrow">&#8595;</div>
+            <div class="vflow-box navy" style="font-size:7pt;">Async: write Click row<br>urlId, tenantId, referrer, UA</div>
+            <div class="vflow-arrow">&#8595;</div>
+            <div class="vflow-box light" style="font-size:7pt;">Analytics: /overview, /clicks<br>/referrers, /user-agents</div>
+            <div class="vflow-arrow">&#8595;</div>
+            <div class="vflow-box accent" style="font-size:7pt;">React AnalyticsPage<br>totals, 30d chart, browser/OS</div>
+            <div class="vflow-arrow">&#8595;</div>
+            <div class="vflow-box teal" style="font-size:7pt;">Cache invalidated on update/delete<br>RedirectCacheService.invalidate()</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 10. KEY DESIGN DECISIONS ===== -->
+  <div class="section-title">10. Key Design Decisions &amp; Verified Behaviours</div>
+  <div class="highlight-row">
+    <div class="highlight-box teal">
+      <div class="hb-title">Redirect Correctness Verified</div>
+      <div class="hb-body">Link created with 3-second <code>expiresAt</code> showed matching Redis TTL; returned 302 before expiry, 410 Gone immediately after &mdash; cache expiry and Postgres enforcement aligned without re-checking on every cache hit.</div>
+    </div>
+  </div>
+  <div class="highlight-row">
+    <div class="highlight-box">
+      <div class="hb-title">Tenant Isolation Verified</div>
+      <div class="hb-body">Two seeded tenants tested: <code>findUnique</code> via <code>TenantPrismaService</code> for another tenant's real user ID returns <code>null</code> &mdash; cross-tenant rows inaccessible even with a valid ID.</div>
+    </div>
+  </div>
+  <div class="highlight-row">
+    <div class="highlight-box red">
+      <div class="hb-title">Timing Attack Prevention</div>
+      <div class="hb-body">Login runs bcrypt comparison even for unknown emails (against a fixed decoy hash), eliminating the timing difference between "no such user" and "wrong password" responses.</div>
+    </div>
+  </div>
+
+  <!-- ===== 11. CONCLUSION & FUTURE SCOPE ===== -->
+  <div class="section-title">11. Conclusion &amp; Future Scope</div>
+  <div class="no-break">
+    <p style="margin-bottom:8px;">The platform achieves its core goals: correct tenant isolation enforced at the ORM layer, a latency-optimised public redirect path, declarative RBAC, secure token rotation, and a React dashboard covering link management and per-tenant click analytics. The deliberate separation of the redirect and management code paths allows each to be optimised independently without compromising the other.</p>
+    <div class="card">
+      <div class="card-title">Deferred / Future Improvements</div>
+      <ul>
+        <li><strong>Async click recording:</strong> queue-backed write (BullMQ) to decouple redirect latency from DB write latency.</li>
+        <li><strong>Immediate access-token revocation:</strong> Redis denylist to close the 15-minute post-logout window.</li>
+        <li><strong>Analytics at scale:</strong> dedicated time-series store or event stream when click volume exceeds relational comfort.</li>
+        <li><strong>Edge / Nginx layer:</strong> TLS termination and edge-level rate limiting for production deployment.</li>
+        <li><strong>Schema-per-tenant:</strong> justified only when contractual data residency or dedicated SLAs are required.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ===== FOOTER ===== -->
+  <div class="page-footer">
+    <span>Multi-Tenant URL Shortener &amp; Analytics Platform &mdash; Technical Report</span>
+    <span id="page-info">Technical Report &mdash; All Rights Reserved</span>
+  </div>
+
+</div>
+</body>
+</html>
